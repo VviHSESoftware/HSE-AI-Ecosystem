@@ -1,0 +1,49 @@
+version: '3.8'
+
+networks:
+  app_net:
+    driver: bridge
+  infra_monitoring_net:
+    external: true
+
+services:
+  ai-gateway:
+    build:
+      context: ./ai-gateway
+      dockerfile: Dockerfile
+    container_name: hse-ai-gateway
+    restart: always
+    ports:
+      - "8090:8000"
+    environment:
+      - WEB_CONCURRENCY=2
+      - LOG_LEVEL=INFO
+    env_file:
+      - .env
+    networks:
+      - app_net
+      - infra_monitoring_net
+
+  redis:
+    image: redis:alpine
+    container_name: hse-redis
+    restart: always
+    volumes:
+      - redis_data:/data
+    networks:
+      - app_net
+
+  qdrant:
+    image: qdrant/qdrant:latest
+    container_name: hse-qdrant
+    restart: always
+    ports:
+      - "6333:6333"
+    volumes:
+      - qdrant_data:/qdrant/storage
+    networks:
+      - app_net
+
+volumes:
+  redis_data:
+  qdrant_data:
