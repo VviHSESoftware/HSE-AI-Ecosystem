@@ -1,0 +1,43 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches: [ "main" ]
+  workflow_dispatch:
+
+jobs:
+  check-code:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v2
+
+      - name: Set up Python
+        run: uv python install 3.10
+
+      - name: Install Linter
+        run: uv tool install ruff
+
+      - name: Run Linter
+        run: ruff check .
+
+  deploy:
+    needs: check-code
+    runs-on: ubuntu-latest
+    steps:
+      - name: Deploy via SSH
+        uses: appleboy/ssh-action@master
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_KEY }}
+          port: 22
+          script: |
+            cd /home/vladimir/HSE_AI_Ecosystem
+            git pull origin main
+            echo "${{ secrets.ENV_FILE }}" > .env
+            docker compose up -d --build --remove-orphans
+            docker image prune -f
