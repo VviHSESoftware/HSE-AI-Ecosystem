@@ -1,7 +1,6 @@
-import json
 from enum import Enum
 from pathlib import Path
-from typing import Optional, Set
+from typing import Optional, Set, Union
 
 from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -20,7 +19,7 @@ class Settings(BaseSettings):
     PROJECT_NAME: str = "HSE AI Gateway"
     LOG_LEVEL: str = "INFO"
 
-    AI_GATEWAY_API_TOKENS: Set[str] = Field(default_factory=set)
+    AI_GATEWAY_API_TOKENS: Union[Set[str], str] = Field(default_factory=set)
 
     # Providers
     GROQ_API_KEY: str
@@ -46,11 +45,9 @@ class Settings(BaseSettings):
     @field_validator("AI_GATEWAY_API_TOKENS", mode="before")
     @classmethod
     def parse_tokens(cls, v):
+        print("TOKEN PARSE")
         if isinstance(v, str):
-            try:
-                return set(json.loads(v))
-            except json.JSONDecodeError:
-                return {v}
+            return set(v.split(","))
         return v
 
     @field_validator("PROXY_URL")
