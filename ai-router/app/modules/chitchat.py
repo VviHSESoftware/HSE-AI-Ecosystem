@@ -29,28 +29,3 @@ class StudentChitchatModule(BaseModule):
         )
 
         return text, []
-
-
-class TeacherChitchatModule(BaseModule):
-    name = "teacher_chitchat"
-    description = "Ответы на академические вопросы, уточнения формулировок. Стиль: преподаватель-студенту, строго, но вежливо."
-
-    async def process(
-            self, messages: List[Dict[str, str]], user_email: str, integrate_links: bool
-    ) -> Tuple[str, List[SourceMaterial]]:
-        system_prompt = (
-            "Ты — преподаватель НИУ ВШЭ. Твоя задача — отвечать студенту. "
-            "Стиль общения: вежливый, формальный, «на вы», строгий, но поддерживающий. "
-            "Избегай сленга. Структурируй ответ четко. "
-            "Отвечай лаконично, экономь время студента. Избегай длинных лекций."
-        )
-
-        messages = [{"role": "system", "content": system_prompt}] + messages
-
-        text = await gateway_client.chat_completion(
-            messages=messages,
-            mode=settings.GENERATION_MODEL_MODE,
-            temperature=0.3
-        )
-
-        return text, []

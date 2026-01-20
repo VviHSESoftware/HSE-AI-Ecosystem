@@ -25,11 +25,11 @@ class RagCourseModule(BaseModule):
             )
         ]
 
-        link_instruction = ""
-        if not integrate_links:
-            link_instruction = "НЕ вставляй ссылки и URL в текст ответа. Просто ссылайся на названия материалов."
-        else:
-            link_instruction = "Используй Markdown [Название](url) для ссылок в тексте."
+        # link_instruction = ""
+        # if not integrate_links:
+        #     link_instruction = "НЕ вставляй ссылки и URL в текст ответа. Просто ссылайся на названия материалов."
+        # else:
+        #     link_instruction = "Используй Markdown [Название](url) для ссылок в тексте."
 
 
         if integrate_links:

@@ -5,7 +5,7 @@ from typing import List, Dict, Any
 from app.core.config import settings
 from app.services.gateway_client import gateway_client
 from app.modules.base import BaseModule
-from app.modules.chitchat import StudentChitchatModule, TeacherChitchatModule
+from app.modules.chitchat import StudentChitchatModule
 from app.modules.rag_course import RagCourseModule
 from app.modules.lna import LnaModule
 
