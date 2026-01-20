@@ -38,6 +38,5 @@ jobs:
           script: |
             cd /home/vladimir/HSE_AI_Ecosystem
             git pull origin main
-            echo "${{ secrets.ENV_FILE }}" > .env
             docker compose up -d --build --remove-orphans
             docker image prune -f

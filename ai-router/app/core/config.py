@@ -12,7 +12,7 @@ class Settings(BaseSettings):
     PROJECT_NAME: str = "HSE AI Router"
     LOG_LEVEL: str = "INFO"
 
-    AI_ROUTER_API_TOKENS: Union[Set[str], str] = Field(default_factory=set)
+    API_TOKENS: Union[Set[str], str] = Field(default_factory=set)
 
     AI_GATEWAY_URL: str = "http://ai-gateway:8000/v1"
     AI_GATEWAY_TOKEN: str
@@ -25,7 +25,7 @@ class Settings(BaseSettings):
         extra="ignore"
     )
 
-    @field_validator("AI_ROUTER_API_TOKENS", mode="before")
+    @field_validator("API_TOKENS", mode="before")
     @classmethod
     def parse_tokens(cls, v):
         if isinstance(v, str):

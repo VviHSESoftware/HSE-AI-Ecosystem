@@ -5,7 +5,7 @@ from app.core.config import settings
 security_scheme = HTTPBearer()
 
 async def verify_api_key(credentials: HTTPAuthorizationCredentials = Security(security_scheme)):
-    if credentials.credentials not in settings.AI_GATEWAY_API_TOKENS:
+    if credentials.credentials not in settings.API_TOKENS:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid service token",
