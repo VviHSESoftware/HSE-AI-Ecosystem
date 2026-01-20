@@ -1,0 +1,25 @@
+[project]
+name = "hse-ai-router"
+version = "1.0.0"
+description = "Semantic Router for HSE Assistant"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    "fastapi",
+    "uvicorn[standard]",
+    "gunicorn",
+    "pydantic>=2.0.0",
+    "pydantic[email]",
+    "pydantic-settings",
+    "httpx",
+    "python-json-logger",
+    "python-dotenv",
+    "prometheus-fastapi-instrumentator",
+    "orjson",
+    "tenacity"
+]
+
+[tool.uv]
+dev-dependencies = [
+    "pytest",
+]

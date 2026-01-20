@@ -17,9 +17,30 @@ services:
       - "8090:8000"
     environment:
       - WEB_CONCURRENCY=2
+      - PROJECT_NAME=HSE AI Gateway
       - LOG_LEVEL=INFO
     env_file:
       - .env
+    networks:
+      - app_net
+      - infra_monitoring_net
+
+  ai-router:
+    build:
+      context: ./ai-router
+      dockerfile: Dockerfile
+    container_name: hse-ai-router
+    restart: always
+    ports:
+      - "8091:8000"
+    env_file:
+      - .env
+    environment:
+      - WEB_CONCURRENCY=2
+      - PROJECT_NAME=HSE AI Router
+      - LOG_LEVEL=INFO
+    depends_on:
+      - ai-gateway
     networks:
       - app_net
       - infra_monitoring_net

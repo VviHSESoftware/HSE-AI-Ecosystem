@@ -20,7 +20,7 @@ class Settings(BaseSettings):
     PROJECT_NAME: str = "HSE AI Gateway"
     LOG_LEVEL: str = "INFO"
 
-    API_TOKENS: Set[str] = Field(default_factory=set)
+    AI_GATEWAY_API_TOKENS: Set[str] = Field(default_factory=set)
 
     # Providers
     GROQ_API_KEY: str
@@ -43,7 +43,7 @@ class Settings(BaseSettings):
 
     model_config = SettingsConfigDict(env_file=BASE_DIR / ".env", extra="ignore")
 
-    @field_validator("API_TOKENS", mode="before")
+    @field_validator("AI_GATEWAY_API_TOKENS", mode="before")
     @classmethod
     def parse_tokens(cls, v):
         if isinstance(v, str):
