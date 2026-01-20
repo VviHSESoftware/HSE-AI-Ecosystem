@@ -1,10 +1,13 @@
+import logging
 from aiogram import Router, types, flags
+from aiogram.enums import ParseMode
 from app.services.auth_service import auth_service
 from app.services.history_service import history_service
 from app.services.router_client import router_client
 
 router = Router()
 
+logger = logging.getLogger(__name__)
 
 @router.message()
 @flags.chat_action("typing")
@@ -29,10 +32,11 @@ async def handle_text(message: types.Message):
 
         answer_text = result.get("content", "Ошибка генерации")
 
-        await message.answer(answer_text, parse_mode="MarkdownV2")
+        await message.answer(answer_text, parse_mode=ParseMode.MARKDOWN)
 
         await history_service.add_message(user_id, "user", user_text)
         await history_service.add_message(user_id, "assistant", answer_text)
 
-    except Exception:
+    except Exception as e:
+        logger.error(f"Chat response error: {e}", exc_info=True)
         await message.answer("😔 Произошла ошибка при обработке запроса. Попробуйте позже.")
