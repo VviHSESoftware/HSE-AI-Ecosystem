@@ -19,8 +19,8 @@ async def cmd_start(message: types.Message):
 
         text = (
             f"Привет, {name}! 🎓\n"
-            "Я — твой AI-ассистент ВШЭ. Я помню контекст нашей беседы.\n\n"
-            "Спрашивай про дедлайны, лекции или просто поболтаем."
+            "Я — AI-ассистент НИУ ВШЭ.\n\n"
+            "Меня можно спросить про дедлайны, лекции или просто поболтать со мной."
         )
         kb = InlineKeyboardMarkup(inline_keyboard=[
             [InlineKeyboardButton(text="🗑 Сбросить контекст", callback_data="clear_context")],
