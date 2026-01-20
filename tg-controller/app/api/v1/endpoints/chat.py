@@ -29,7 +29,7 @@ async def handle_text(message: types.Message):
 
         answer_text = result.get("content", "Ошибка генерации")
 
-        await message.answer(answer_text, parse_mode="HTML")
+        await message.answer(answer_text, parse_mode="MarkdownV2")
 
         await history_service.add_message(user_id, "user", user_text)
         await history_service.add_message(user_id, "assistant", answer_text)

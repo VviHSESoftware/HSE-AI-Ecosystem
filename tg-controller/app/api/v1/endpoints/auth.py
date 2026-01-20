@@ -1,5 +1,6 @@
 import logging
 
+from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 from fastapi import Request, APIRouter
 from fastapi.responses import HTMLResponse
 
@@ -36,6 +37,23 @@ async def auth_callback(request: Request):
             chat_id=tg_id,
             text=f"✅ Вы успешно вошли как <b>{user_info.get('name')}</b>!",
             parse_mode="HTML"
+        )
+
+        text = (
+            f"Привет, {user_info.get('name')}! 🎓\n"
+            "Я — твой AI-ассистент ВШЭ. Я помню контекст нашей беседы.\n\n"
+            "Спрашивай про дедлайны, лекции или просто поболтаем."
+        )
+        kb = InlineKeyboardMarkup(inline_keyboard=[
+            [InlineKeyboardButton(text="🗑 Сбросить контекст", callback_data="clear_context")],
+            [InlineKeyboardButton(text="👤 Профиль", callback_data="profile")]
+        ])
+
+        await bot.send_message(
+            chat_id=tg_id,
+            text=text,
+            parse_mode="HTML",
+            reply_markup=kb,
         )
 
         return HTMLResponse("""
