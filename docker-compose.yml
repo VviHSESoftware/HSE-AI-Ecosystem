@@ -71,7 +71,7 @@ services:
     environment:
       - WEB_CONCURRENCY=2
     env_file:
-      - .env
+      - ./alice-controller/.env
     depends_on:
       - redis
       - ai-router
