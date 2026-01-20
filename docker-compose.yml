@@ -54,6 +54,26 @@ services:
     environment:
       - WEB_CONCURRENCY=1
     depends_on:
+      - redis
+      - ai-router
+    networks:
+      - app_net
+      - infra_monitoring_net
+
+  alice-controller:
+    build:
+      context: ./alice-controller
+      dockerfile: Dockerfile
+    container_name: hse-alice-controller
+    restart: always
+    ports:
+      - "8093:8000"
+    environment:
+      - WEB_CONCURRENCY=2
+    env_file:
+      - .env
+    depends_on:
+      - redis
       - ai-router
     networks:
       - app_net
