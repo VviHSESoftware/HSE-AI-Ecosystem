@@ -5,6 +5,7 @@ from app.api.v1.schemas import (
     EmbeddingRequest, EmbeddingResponse,
     VLMRequest
 )
+from app.core.timer import timer
 from app.services.gateway_service import gateway_service
 from app.core.security import verify_api_key
 
@@ -15,21 +16,23 @@ router = APIRouter()
 
 @router.post("/llm", response_model=LLMResponse, dependencies=[Depends(verify_api_key)])
 async def generate_text(request: LLMRequest):
-    try:
-        payload = request.model_dump(exclude={"mode"})
-        raw = await gateway_service.chat_completion(payload, request.mode)
+    with timer("Gateway Endpoint"):
+        try:
+            payload = request.model_dump(exclude={"mode"})
+            with timer("Gateway Chat Completion"):
+                raw = await gateway_service.chat_completion(payload, request.mode)
 
-        choice = raw["choices"][0]["message"]
-        content = choice.get("content") or ""
+            choice = raw["choices"][0]["message"]
+            content = choice.get("content") or ""
 
-        return LLMResponse(
-            content=content,
-            model=raw["model"],
-            usage=raw.get("usage", {})
-        )
-    except Exception as e:
-        logger.error(f"LLM Provider Error: {str(e)}", exc_info=True)
-        raise HTTPException(status_code=502, detail=f"LLM Provider Error: {str(e)}")
+            return LLMResponse(
+                content=content,
+                model=raw["model"],
+                usage=raw.get("usage", {})
+            )
+        except Exception as e:
+            logger.error(f"LLM Provider Error: {str(e)}", exc_info=True)
+            raise HTTPException(status_code=502, detail=f"LLM Provider Error: {str(e)}")
 
 
 @router.post("/embeddings", response_model=EmbeddingResponse, dependencies=[Depends(verify_api_key)])

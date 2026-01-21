@@ -8,6 +8,7 @@ class Settings(BaseSettings):
     APP_VERSION: str = "1.0.0"
     PROJECT_NAME: str = "HSE Alice Controller"
     LOG_LEVEL: str = "INFO"
+    PROFILING: bool = False
 
     # --- Keycloak ---
     KEYCLOAK_SERVER_URL: str

@@ -6,6 +6,8 @@ from app.core.config import settings, LLMMode
 
 from prometheus_client import Counter
 
+from app.core.timer import timer
+
 logger = logging.getLogger(__name__)
 
 TOKENS_SPENT = Counter('ai_tokens_total', 'Total AI tokens spent', ['model', 'mode'])
@@ -41,7 +43,8 @@ class GatewayService:
 
         async with client as c:
             logger.info(f"Routing LLM request to {model} (Mode: {mode})")
-            response = await c.post("/chat/completions", json=payload)
+            with timer("Gateway LLM Call"):
+                response = await c.post("/chat/completions", json=payload)
             response.raise_for_status()
 
             response_json = response.json()

@@ -1,5 +1,6 @@
 from typing import List, Dict, Tuple
 from app.api.v1.schemas import SourceMaterial
+from app.core.timer import timer
 from app.modules.base import BaseModule
 from app.services.gateway_client import gateway_client
 from app.core.config import settings
@@ -21,11 +22,11 @@ class StudentChitchatModule(BaseModule):
         )
 
         messages = [{"role": "system", "content": system_prompt}] + messages
-
-        text = await gateway_client.chat_completion(
-            messages=messages,
-            mode=settings.GENERATION_MODEL_MODE,
-            temperature=0.7
-        )
+        with timer("Router Chitchat"):
+            text = await gateway_client.chat_completion(
+                messages=messages,
+                mode=settings.GENERATION_MODEL_MODE,
+                temperature=0.7
+            )
 
         return text, []

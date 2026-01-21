@@ -11,6 +11,7 @@ class Settings(BaseSettings):
     APP_VERSION: str = "1.0.0"
     PROJECT_NAME: str = "HSE AI Router"
     LOG_LEVEL: str = "INFO"
+    PROFILING: bool = False
 
     API_TOKENS: Union[Set[str], str] = Field(default_factory=set)
 

@@ -18,6 +18,7 @@ class Settings(BaseSettings):
     APP_VERSION: str = "1.0.0"
     PROJECT_NAME: str = "HSE AI Gateway"
     LOG_LEVEL: str = "INFO"
+    PROFILING: bool = False
 
     API_TOKENS: Union[Set[str], str] = Field(default_factory=set)
 
@@ -45,7 +46,6 @@ class Settings(BaseSettings):
     @field_validator("API_TOKENS", mode="before")
     @classmethod
     def parse_tokens(cls, v):
-        print("TOKEN PARSE")
         if isinstance(v, str):
             return set(v.split(","))
         return v

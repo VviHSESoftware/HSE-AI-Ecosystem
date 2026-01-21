@@ -8,6 +8,7 @@ class Settings(BaseSettings):
     APP_VERSION: str = "1.0.0"
     PROJECT_NAME: str = "HSE TG Bot"
     LOG_LEVEL: str = "INFO"
+    PROFILING: bool = False
 
     BOT_TOKEN: str
 

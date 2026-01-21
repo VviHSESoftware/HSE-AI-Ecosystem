@@ -3,6 +3,7 @@ import json
 from typing import List, Dict, Any
 
 from app.core.config import settings
+from app.core.timer import timer
 from app.services.gateway_client import gateway_client
 from app.modules.base import BaseModule
 from app.modules.chitchat import StudentChitchatModule
@@ -51,11 +52,12 @@ Example: {{"tool": "student_chitchat"}}
         prompt = self._build_classification_prompt(last_user_message)
 
         try:
-            raw_decision = await gateway_client.chat_completion(
-                messages=[{"role": "user", "content": prompt}],
-                mode=settings.ROUTER_MODEL_MODE,
-                temperature=0.0
-            )
+            with timer("Router Decision making"):
+                raw_decision = await gateway_client.chat_completion(
+                    messages=[{"role": "user", "content": prompt}],
+                    mode=settings.ROUTER_MODEL_MODE,
+                    temperature=0.0
+                )
 
             clean_json = raw_decision.replace("```json", "").replace("```", "").strip()
             decision = json.loads(clean_json)

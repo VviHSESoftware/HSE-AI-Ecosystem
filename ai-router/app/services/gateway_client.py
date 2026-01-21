@@ -4,6 +4,7 @@ from typing import List, Dict
 from tenacity import retry, stop_after_attempt, wait_exponential
 
 from app.core.config import settings
+from app.core.timer import timer
 
 logger = logging.getLogger(__name__)
 
@@ -28,11 +29,12 @@ class GatewayClient:
         }
 
         try:
-            response = await self.client.post(
-                f"{self.base_url}/llm",
-                json=payload,
-                headers=self.headers
-            )
+            with timer("Router Gateway Call"):
+                response = await self.client.post(
+                    f"{self.base_url}/llm",
+                    json=payload,
+                    headers=self.headers
+                )
             response.raise_for_status()
             data = response.json()
             return data["content"]
