@@ -9,6 +9,7 @@ from prometheus_fastapi_instrumentator import Instrumentator
 from app.core.config import settings
 from app.core.logging_config import setup_logging
 from app.api.v1.endpoints import generation, audio
+from app.services.gateway_service import gateway_service
 
 logger = logging.getLogger(__name__)
 
@@ -16,8 +17,10 @@ logger = logging.getLogger(__name__)
 async def lifespan(app: FastAPI):
     setup_logging()
     logger.info(f"Starting {settings.PROJECT_NAME} v{settings.APP_VERSION}")
+    await gateway_service.start_warmup()
     yield
     logger.info("Shutting down...")
+    await gateway_service.stop()
 
 app = FastAPI(
     title=settings.PROJECT_NAME,
