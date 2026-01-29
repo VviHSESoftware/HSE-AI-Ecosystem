@@ -1,0 +1,21 @@
+[project]
+name = "hse-vk-bot"
+version = "1.0.0"
+description = "VK Controller for HSE AI Ecosystem"
+requires-python = ">=3.10"
+dependencies = [
+    "fastapi",
+    "uvicorn[standard]",
+    "gunicorn",
+    "vkbottle>=4.0.0",
+    "redis>=5.0.0",
+    "authlib",
+    "httpx",
+    "itsdangerous",
+    "pydantic>=2.0.0",
+    "pydantic-settings",
+    "python-json-logger",
+    "python-dotenv",
+    "prometheus-fastapi-instrumentator",
+    "orjson"
+]
