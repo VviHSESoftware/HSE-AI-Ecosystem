@@ -103,7 +103,7 @@ async def chat_handler(message):
 
             answer_text = result.get("content", "Ошибка генерации")
 
-            await message.answer(answer_text)
+            await message.answer(answer_text, parse_mode="Markdown")
 
             await history_service.add_message(vk_id, "user", user_text)
             await history_service.add_message(vk_id, "assistant", answer_text)
