@@ -1,0 +1,39 @@
+name: hse-ai-ecosystem-mock
+
+networks:
+  hse_ai_ecosystem:
+    external: true
+
+services:
+  provider-fast:
+    build:
+      context: ./ai-mock-provider
+      dockerfile: Dockerfile
+    environment:
+      - PORT=8080
+      - LLM_DELAY_MS=100
+      - MODEL_ID=fast-model-1
+    networks:
+      - hse_ai_ecosystem
+
+  provider-normal:
+    build:
+      context: ./ai-mock-provider
+      dockerfile: Dockerfile
+    environment:
+      - PORT=8080
+      - LLM_DELAY_MS=1000
+      - MODEL_ID=normal-model-1
+    networks:
+      - hse_ai_ecosystem
+
+  provider-precise:
+    build:
+      context: ./ai-mock-provider
+      dockerfile: Dockerfile
+    environment:
+      - PORT=8080
+      - LLM_DELAY_MS=3000
+      - MODEL_ID=precise-model-1
+    networks:
+      - hse_ai_ecosystem

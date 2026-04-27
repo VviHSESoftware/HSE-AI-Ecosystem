@@ -1,0 +1,24 @@
+FROM rust:1.95-bookworm
+
+WORKDIR /app
+
+RUN apt-get update && apt-get install -y \
+    ca-certificates \
+    curl \
+    ffmpeg \
+    poppler-utils \
+    libreoffice-writer \
+    libreoffice-impress \
+    libreoffice-common \
+    && rm -rf /var/lib/apt/lists/*
+
+RUN cargo install cargo-watch
+
+# yt-dlp
+RUN curl -L https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp -o /usr/local/bin/yt-dlp \
+    && chmod a+rx /usr/local/bin/yt-dlp
+
+
+EXPOSE 8001
+
+CMD ["cargo-watch", "--poll", "-x", "run"]
