@@ -1,0 +1,33 @@
+[package]
+name = "hse-document-processor"
+version = "1.0.0"
+edition = "2021"
+
+[dependencies]
+# Web & Async
+tokio = { version = "1.35", features = ["full"] }
+axum = { version = "0.7", features = ["multipart", "macros"] }
+reqwest = { version = "0.12", default-features = false, features = ["json", "multipart", "rustls-tls"] }
+
+# Serialization
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+dotenvy = "0.15"
+
+# Metrics & Logging
+prometheus = { version = "0.13", default-features = true, features = ["process"]}
+lazy_static = "1.4"
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter", "json"] }
+
+# Swagger / OpenAPI
+utoipa = { version = "4.2", features = ["axum_extras"] }
+utoipa-swagger-ui = { version = "6.0", features = ["axum"] }
+
+# Промышленные утилиты
+tempfile = "3.10"
+uuid = { version = "1.7", features = ["v4"] }
+text-splitter = { version = "0.16", features = ["markdown"] }
+url = "2.5"
+regex = "1.10"
+futures = "0.3.32"

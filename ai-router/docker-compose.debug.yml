@@ -1,0 +1,30 @@
+version: '3.8'
+
+services:
+  chat-orchestrator:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    container_name: hse-chat-orchestrator-debug
+    volumes:
+      - .:/app
+      - cargo-cache:/usr/local/cargo/registry
+      - target-cache:/app/target
+    environment:
+      - RUST_LOG=debug
+    networks:
+      - hse_ai_ecosystem
+      - infra_monitoring_net
+    ports:
+      - "8003:8000"
+    restart: unless-stopped
+
+volumes:
+  cargo-cache:
+  target-cache:
+
+networks:
+  hse_ai_ecosystem:
+    external: true
+  infra_monitoring_net:
+    external: true

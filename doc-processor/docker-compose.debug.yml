@@ -1,0 +1,21 @@
+version: '3.8'
+
+services:
+  doc-processor:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    container_name: hse-doc-proc-debug
+    volumes:
+      - .:/app
+      - cargo-cache:/usr/local/cargo/registry
+      - target-cache:/app/target
+    environment:
+      - RUST_LOG=debug
+    ports:
+      - "8001:8000"
+    restart: unless-stopped
+
+volumes:
+  cargo-cache:
+  target-cache:
