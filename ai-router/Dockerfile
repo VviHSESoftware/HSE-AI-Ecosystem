@@ -17,8 +17,6 @@ WORKDIR /app
 
 COPY --from=builder /app/target/x86_64-unknown-linux-musl/release/hse-chat-orchestrator .
 
-COPY config-example.json ./config.json
-
 COPY --from=builder /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/
 
 EXPOSE 8000

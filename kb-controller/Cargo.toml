@@ -16,7 +16,7 @@ bincode = "1.3"
 dotenvy = "0.15"
 
 # Database
-sqlx = { version = "0.7", features = ["runtime-tokio-native-tls", "postgres", "chrono", "macros"] }
+sqlx = { version = "0.7", features = ["runtime-tokio-rustls", "postgres", "chrono", "macros"] }
 
 # Hashing
 sha2 = "0.10"
