@@ -37,7 +37,7 @@ async fn moodle_webhook(
         sync_job::process_webhook(env_clone, payload.course_id, payload.update_type).await;
     });
 
-    (StatusCode::ACCEPTED, Json(WebhookResponse { status: "Queued".into() }))
+    (StatusCode::OK, Json(WebhookResponse { status: "Queued".into() }))
 }
 
 #[tokio::main]
@@ -49,7 +49,7 @@ async fn main() {
         .route("/moodle-update", post(moodle_webhook))
         .with_state(env);
 
-    let listener = tokio::net::TcpListener::bind("0.0.0.0:8005").await.unwrap();
-    info!("Moodle Extractor listening on http://0.0.0.0:8005");
+    let listener = tokio::net::TcpListener::bind("0.0.0.0:8000").await.unwrap();
+    info!("Moodle Extractor listening on http://0.0.0.0:8000");
     axum::serve(listener, app).await.unwrap();
 }

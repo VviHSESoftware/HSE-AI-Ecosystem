@@ -1,21 +1,27 @@
-FROM python:3.10-slim
+FROM rust:1.95-bookworm as builder
+
+RUN apt-get update && apt-get install -y musl-tools clang && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
-ENV PYTHONDONTWRITEBYTECODE=1 \
-    PYTHONUNBUFFERED=1 \
-    UV_COMPILE_BYTECODE=1 \
-    UV_LINK_MODE=copy
 
-COPY --from=ghcr.io/astral-sh/uv:latest /uv /bin/uv
+RUN rustup target add x86_64-unknown-linux-musl
 
-COPY pyproject.toml uv.lock ./
+COPY Cargo.toml Cargo.lock ./
 
-RUN uv sync --frozen --no-dev --no-install-project
+COPY ai-gateway/Cargo.toml ./ai-gateway/
+COPY ai-gateway/src ./ai-gateway/src
 
-ENV PATH="/app/.venv/bin:$PATH"
+RUN cargo build --target x86_64-unknown-linux-musl --release
 
-COPY . .
+FROM scratch
+
+WORKDIR /app
+
+COPY --from=builder /app/target/x86_64-unknown-linux-musl/release/hse-ai-gateway .
+
+COPY ai-gateway/config.json ./ai-gateway/config.json
+
+COPY --from=builder /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/
 
 EXPOSE 8000
-
-CMD ["gunicorn", "-c", "gunicorn_conf.py", "app.main:app"]
+ENTRYPOINT ["./hse-ai-gateway"]

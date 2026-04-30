@@ -1,9 +1,7 @@
-__pycache__/
-*.py[cod]
+/target
 .env
-.venv/
-venv/
+config.json
+config-prod.json
+*.log
 .idea/
 .vscode/
-*.log
-.pytest_cache/
