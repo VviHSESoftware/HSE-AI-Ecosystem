@@ -4,9 +4,8 @@ use axum::extract::Path;
 use fang::AsyncQueueable;
 use uuid::Uuid;
 use tracing::info;
-
+use common_infra::AppError;
 use crate::{
-    error::AppError,
     schemas::{AssignmentMessage, SubmitResponse, ResultsRequest, ResultItem, VerdictResponse, SubmissionTextResponse},
     state::AppState,
     worker::CheckJob,
@@ -121,7 +120,7 @@ pub async fn get_submission_text(
 
     match result {
         Some(res) => Ok(Json(res)),
-        None => Err(AppError::not_found("Submission not found")),
+        None => Err(AppError::NotFound("Submission not found".into())),
     }
 }
 
@@ -143,6 +142,6 @@ pub async fn get_submission_verdict(
 
     match result {
         Some(res) => Ok(Json(res)),
-        None => Err(AppError::not_found("Verdict not found")),
+        None => Err(AppError::NotFound("Verdict not found".into())),
     }
 }

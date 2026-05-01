@@ -1,2 +1,15 @@
 .env
+config.json
+
 .idea/
+target/
+
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+env/
+venv/
+.pytest_cache/
+
+metrics/grafana_storage/

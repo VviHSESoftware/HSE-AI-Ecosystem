@@ -1018,7 +1018,6 @@ dependencies = [
  "serde_json",
  "tokio",
  "tracing",
- "tracing-subscriber",
  "utoipa",
  "utoipa-swagger-ui",
 ]
@@ -1027,9 +1026,11 @@ dependencies = [
 name = "hse-autocheck-rust"
 version = "1.0.0"
 dependencies = [
+ "ai-gateway-client",
  "async-trait",
  "axum",
  "chrono",
+ "common-infra",
  "dotenvy",
  "fang",
  "metrics 0.24.5",

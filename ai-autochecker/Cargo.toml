@@ -36,3 +36,7 @@ regex = { workspace = true }
 uuid = { workspace = true }
 thiserror = { workspace = true }
 chrono = { workspace = true }
+
+# Internal
+ai-gateway-client = { workspace = true }
+common-infra = { workspace = true }

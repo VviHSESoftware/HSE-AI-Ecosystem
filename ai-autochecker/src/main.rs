@@ -1,7 +1,5 @@
 mod config;
-mod error;
 mod handlers;
-mod middlewares;
 mod openapi;
 mod schemas;
 mod state;
@@ -21,17 +19,16 @@ use metrics_exporter_prometheus::PrometheusBuilder;
 use config::AppEnv;
 use state::{AppState, GLOBAL_STATE};
 use tracing_subscriber::{EnvFilter, layer::SubscriberExt, util::SubscriberInitExt, Layer};
+use common_infra::{
+    init_tracing, register_process_metrics,
+    common_auth_guard, system_handlers
+};
 
 #[tokio::main]
 async fn main() {
-    let env = AppEnv::load();
+    init_tracing("HSE AI Autochecker");
 
-    tracing_subscriber::registry()
-        .with(
-            tracing_subscriber::fmt::layer()
-                .with_filter(EnvFilter::builder().parse(&env.log_level).unwrap_or_else(|_| EnvFilter::new("info"))),
-        )
-        .init();
+    let env = AppEnv::load();
 
     info!("Starting {} v{}", env.project_name, env.app_version);
 
@@ -104,10 +101,11 @@ async fn main() {
         .route("/tasks/:task_name/students/failed", get(handlers::checker::get_failed_students))
         .route("/tasks/:task_name/students/:email/submission", get(handlers::checker::get_submission_text))
         .route("/tasks/:task_name/students/:email/verdict", get(handlers::checker::get_submission_verdict))
-        .route_layer(middleware::from_fn_with_state(state.clone(), middlewares::auth_guard));
+        .route_layer(middleware::from_fn_with_state(state.clone(), common_auth_guard));
 
     let app = Router::new()
         .nest("/api/v2", api_routes)
+        .route("/health", get(system_handlers::health))
         .route("/metrics", get(move || std::future::ready(handle.render())))
         .merge(SwaggerUi::new("/docs").url("/api-docs/openapi.json", openapi::ApiDoc::openapi()))
         .with_state(state.clone());

@@ -1,7 +1,0 @@
-/target
-.env
-config.json
-config-prod.json
-*.log
-.idea/
-.vscode/
