@@ -10,6 +10,7 @@ members = [
     "kb-controller",
     "kb-interface",
     "libs/ai-gateway-client",
+    "libs/common-infra",
 ]
 
 [workspace.dependencies]
@@ -21,6 +22,7 @@ futures = "0.3"
 reqwest = { version = "0.12", default-features = false, features = ["json", "multipart", "rustls-tls"] }
 scraper = "0.19"
 tokio = { version = "1.52.1", features = ["full"] }
+tower-http = { version = "0.5", features = ["trace"] }
 url = "2.5"
 
 # Serialization
@@ -62,6 +64,7 @@ uuid = { version = "1.8", features = ["v4", "serde"] }
 
 # Internal
 ai-gateway-client = { path = "libs/ai-gateway-client", features = ["openapi"] }
+common-infra = { path = "libs/common-infra", features = ["openapi"] }
 
 [profile.release]
 opt-level = "z"

@@ -7,6 +7,7 @@ use std::sync::Arc;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 use tokio::sync::RwLock;
 use tracing::{error, info};
+use common_infra::HasApiTokens;
 
 pub struct GatewayState {
     pub config: DynamicConfig,
@@ -16,6 +17,12 @@ pub struct GatewayState {
 pub struct GatewayService {
     pub env: AppEnv,
     pub state: RwLock<Option<GatewayState>>,
+}
+
+impl HasApiTokens for GatewayService {
+    fn get_api_tokens(&self) -> &HashSet<String> {
+        &self.env.api_tokens
+    }
 }
 
 impl GatewayService {
@@ -88,14 +95,14 @@ impl GatewayService {
         match res {
             Ok(response) => {
                 let status = response.status();
-                AI_REQUESTS.with_label_values(&[&m_settings.remote_model_id, mode, &m_settings.provider_id, status.as_str()]).inc();
+                AI_REQUESTS.with_label_values(&[m_settings.remote_model_id.as_str(), mode, &m_settings.provider_id, status.as_str()]).inc();
 
                 if status.is_success() {
                     let data = response.text().await.map_err(|e| e.to_string())?;
                     match serde_json::from_str::<serde_json::Value>(&data) {
                         Ok(data) => {
                             if let Some(tokens) = data.pointer("/usage/total_tokens").and_then(|v| v.as_i64()) {
-                                TOKENS_SPENT.with_label_values(&[&m_settings.remote_model_id, mode, &m_settings.provider_id]).inc_by(tokens as u64);
+                                TOKENS_SPENT.with_label_values(&[m_settings.remote_model_id.as_str(), mode, &m_settings.provider_id]).inc_by(tokens as u64);
                             }
                             Ok(data)
                         }
@@ -116,7 +123,7 @@ impl GatewayService {
                 }
             }
             Err(e) => {
-                AI_REQUESTS.with_label_values(&[&m_settings.remote_model_id, mode, &m_settings.provider_id, "error"]).inc();
+                AI_REQUESTS.with_label_values(&[m_settings.remote_model_id.as_str(), mode, &m_settings.provider_id, "error"]).inc();
                 error!("Connection Error: {}", e);
                 Err(e.to_string())
             }

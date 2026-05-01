@@ -1,6 +1,7 @@
 use axum::{extract::{State, Json}};
 use std::sync::Arc;
-use crate::{schemas::*, state::GatewayService, error::AppError};
+use crate::{schemas::*, state::GatewayService};
+use common_infra::AppError;
 
 #[utoipa::path(post, path = "/v1/llm", request_body = LLMRequest, responses((status = 200, body = LLMResponse)), security(("bearerAuth" = [])))]
 pub async fn llm(State(state): State<Arc<GatewayService>>, Json(req): Json<LLMRequest>) -> Result<Json<LLMResponse>, AppError> {

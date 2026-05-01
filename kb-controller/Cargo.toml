@@ -32,5 +32,8 @@ utoipa = { workspace = true }
 utoipa-swagger-ui = { workspace = true }
 
 # Utils
-lazy_static = { workspace = true }
 uuid = { workspace = true }
+
+# Internal
+ai-gateway-client = { workspace = true }
+common-infra = { workspace = true }

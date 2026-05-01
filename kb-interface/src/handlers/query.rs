@@ -3,7 +3,8 @@ use std::sync::Arc;
 use serde_json::json;
 use sqlx::Row;
 use tracing::error;
-use crate::{schemas::*, state::InterfaceState, error::AppError};
+use crate::{schemas::*, state::InterfaceState};
+use common_infra::AppError;
 
 #[utoipa::path(
     post,
@@ -78,7 +79,7 @@ pub async fn timed_video_query(State(state): State<Arc<InterfaceState>>, Json(re
 
     let path_str = match path_row {
         Some(row) => row.get::<Option<String>, _>("path").unwrap_or_default(),
-        None => return Err(AppError(axum::http::StatusCode::NOT_FOUND, "Module not found".into())),
+        None => return Err(AppError::NotFound("Module not found".into())),
     };
 
     let path_ids: Vec<i32> = path_str.split('/').filter(|s| !s.is_empty()).filter_map(|s| s.parse().ok()).collect();
@@ -86,7 +87,7 @@ pub async fn timed_video_query(State(state): State<Arc<InterfaceState>>, Json(re
     let has_access = path_ids.iter().any(|id| allowed.contains(id));
 
     if !has_access {
-        return Err(AppError(axum::http::StatusCode::FORBIDDEN, "Access denied".into()));
+        return Err(AppError::Forbidden("Access denied".into()));
     }
 
     let rows = sqlx::query("SELECT start_time, content FROM video_chunks WHERE module_id = $1 AND start_time >= $2 AND end_time <= $3")
@@ -110,7 +111,7 @@ pub async fn timed_video_query(State(state): State<Arc<InterfaceState>>, Json(re
 
     let module_url = match module_row {
         Some(row) => row.get::<Option<String>, _>("url").unwrap_or_default(),
-        None => return Err(AppError(axum::http::StatusCode::NOT_FOUND, "Module not found".into())),
+        None => return Err(AppError::NotFound("Module not found".into())),
     };
 
     let desc = state.get_module_desc(req.module_id).await;
@@ -138,7 +139,7 @@ pub async fn document_page_query(State(state): State<Arc<InterfaceState>>, Json(
 
     let path_str = match path_row {
         Some(row) => row.get::<Option<String>, _>("path").unwrap_or_default(),
-        None => return Err(AppError(axum::http::StatusCode::NOT_FOUND, "Module not found".into())),
+        None => return Err(AppError::NotFound("Module not found".into())),
     };
 
     let path_ids: Vec<i32> = path_str.split('/').filter(|s| !s.is_empty()).filter_map(|s| s.parse().ok()).collect();
@@ -146,7 +147,7 @@ pub async fn document_page_query(State(state): State<Arc<InterfaceState>>, Json(
     let has_access = path_ids.iter().any(|id| allowed.contains(id));
 
     if !has_access {
-        return Err(AppError(axum::http::StatusCode::FORBIDDEN, "Access denied".into()));
+        return Err(AppError::Forbidden("Access denied".into()));
     }
 
     let module_row = sqlx::query("SELECT url FROM modules WHERE id = $1")
@@ -155,7 +156,7 @@ pub async fn document_page_query(State(state): State<Arc<InterfaceState>>, Json(
 
     let module_url = match module_row {
         Some(row) => row.get::<Option<String>, _>("url").unwrap_or_default(),
-        None => return Err(AppError(axum::http::StatusCode::NOT_FOUND, "Module not found".into())),
+        None => return Err(AppError::NotFound("Module not found".into())),
     };
 
     let row = sqlx::query("SELECT content FROM module_file_pages WHERE module_id = $1 AND page_number = $2")
@@ -188,7 +189,7 @@ pub async fn full_content_query(State(state): State<Arc<InterfaceState>>, Json(r
 
         let path_str = match path_row {
             Some(row) => row.get::<Option<String>, _>("path").unwrap_or_default(),
-            None => return Err(AppError(axum::http::StatusCode::NOT_FOUND, "Module not found".into())),
+            None => return Err(AppError::NotFound("Module not found".into())),
         };
 
         let path_ids: Vec<i32> = path_str.split('/').filter(|s| !s.is_empty()).filter_map(|s| s.parse().ok()).collect();
@@ -208,7 +209,7 @@ pub async fn full_content_query(State(state): State<Arc<InterfaceState>>, Json(r
 
         let module_url = match module_row {
             Some(row) => row.get::<Option<String>, _>("url").unwrap_or_default(),
-            None => return Err(AppError(axum::http::StatusCode::NOT_FOUND, "Module not found".into())),
+            None => return Err(AppError::NotFound("Module not found".into())),
         };
 
         let text_rows = sqlx::query("SELECT content FROM module_text WHERE module_id = $1").bind(mid).fetch_all(&state.db).await?;

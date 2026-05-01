@@ -1,7 +1,8 @@
 use axum::{extract::State, Json};
 use std::sync::Arc;
 use serde_json::{json, Value};
-use crate::{state::GatewayService, config::DynamicConfig, error::AppError};
+use crate::{state::GatewayService, config::DynamicConfig};
+use common_infra::AppError;
 
 #[utoipa::path(post, path = "/v1/admin/config/reload", responses((status = 200, description = "Success")), security(("bearerAuth" = [])))]
 pub async fn reload(State(state): State<Arc<GatewayService>>) -> Result<Json<Value>, AppError> {

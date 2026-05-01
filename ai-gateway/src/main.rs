@@ -1,39 +1,29 @@
 mod config;
-mod error;
 mod handlers;
 mod metrics;
 mod openapi;
 mod schemas;
-mod middlewares;
 mod state;
 
 use axum::{routing::{get, post}, Router, middleware};
 use std::sync::Arc;
 use tokio::net::TcpListener;
 use tracing::info;
-use tracing_subscriber::EnvFilter;
 use utoipa::OpenApi;
 use utoipa_swagger_ui::SwaggerUi;
 
 use config::{AppEnv, DynamicConfig};
 use state::GatewayService;
 
-fn register_process_metrics() {
-    #[cfg(target_os = "linux")]
-    {
-        let process_collector = prometheus::process_collector::ProcessCollector::for_self();
-        prometheus::register(Box::new(process_collector)).ok();
-    }
-}
+use common_infra::{
+    init_tracing, register_process_metrics,
+    track_metrics, common_auth_guard, system_handlers
+};
 
 #[tokio::main]
 async fn main() {
+    init_tracing("HSE AI Gateway");
     register_process_metrics();
-
-    tracing_subscriber::fmt()
-        .json()
-        .with_env_filter(EnvFilter::from_default_env().add_directive("info".parse().unwrap()))
-        .init();
 
     let env = AppEnv::load();
     info!("Starting {} v{}", env.project_name, env.app_version);
@@ -57,15 +47,15 @@ async fn main() {
         .route("/asr", post(handlers::audio::asr))
         .route("/admin/config/reload", post(handlers::admin::reload))
         .route("/admin/status/models", get(handlers::admin::status))
-        .route_layer(middleware::from_fn_with_state(service.clone(), middlewares::auth_guard));
+        .route_layer(middleware::from_fn_with_state(service.clone(), common_auth_guard));
 
     let app = Router::new()
-        .route("/health", get(handlers::system::health))
-        .route("/metrics", get(handlers::system::metrics))
+        .route("/health", get(system_handlers::health))
+        .route("/metrics", get(system_handlers::metrics))
         .nest("/v1", auth_routes)
         .merge(SwaggerUi::new("/docs").url("/api-docs/openapi.json", openapi::ApiDoc::openapi()))
         .with_state(service)
-        .layer(axum::middleware::from_fn(middlewares::track_metrics));
+        .layer(axum::middleware::from_fn(track_metrics));
 
     let listener = TcpListener::bind("0.0.0.0:8000").await.unwrap();
     info!("Listening on http://0.0.0.0:8000");

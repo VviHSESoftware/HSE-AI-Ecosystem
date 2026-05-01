@@ -1,16 +1,24 @@
+use std::collections::HashSet;
 use crate::{config::AppEnv, schemas::*};
-use reqwest::{Client, multipart};
-use sqlx::PgPool;
-use serde_json::json;
-use sqlx::Row;
-use sha2::{Sha256, Digest};
 use bincode;
-use tracing::info;
+use reqwest::{multipart, Client};
+use serde_json::json;
+use sha2::{Digest, Sha256};
+use sqlx::PgPool;
+use sqlx::Row;
+use common_infra::HasApiTokens;
 
 pub struct KbControllerState {
     pub env: AppEnv,
     pub db: PgPool,
     pub client: Client,
+    pub api_tokens: HashSet<String>,
+}
+
+impl HasApiTokens for KbControllerState {
+    fn get_api_tokens(&self) -> &HashSet<String> {
+        &self.api_tokens
+    }
 }
 
 impl KbControllerState {
@@ -19,7 +27,11 @@ impl KbControllerState {
             .timeout(std::time::Duration::from_secs(600))
             .build()
             .unwrap();
-        Self { env, db, client }
+
+        let mut api_tokens = HashSet::new();
+        api_tokens.insert(env.admin_token.clone());
+
+        Self { env, db, client, api_tokens }
     }
 
     fn calculate_hash(data: &[u8]) -> String {

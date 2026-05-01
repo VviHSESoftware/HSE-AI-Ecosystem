@@ -1,10 +1,11 @@
 use utoipa::OpenApi;
 use crate::{schemas::*, handlers::*};
+use common_infra::{system_handlers, openapi::SecurityAddon};
 
 #[derive(OpenApi)]
 #[openapi(
     paths(
-        system::health, system::metrics,
+        system_handlers::health, system_handlers::metrics,
         chunking::chunk_text, chunking::chunk_partitioned,
         parsing::parse_video, parsing::parse_document, parsing::get_supported_types
     ),
@@ -18,19 +19,3 @@ use crate::{schemas::*, handlers::*};
     modifiers(&SecurityAddon)
 )]
 pub struct ApiDoc;
-
-struct SecurityAddon;
-impl utoipa::Modify for SecurityAddon {
-    fn modify(&self, openapi: &mut utoipa::openapi::OpenApi) {
-        if let Some(comp) = openapi.components.as_mut() {
-            comp.add_security_scheme(
-                "bearerAuth",
-                utoipa::openapi::security::SecurityScheme::Http(
-                    utoipa::openapi::security::HttpBuilder::new()
-                        .scheme(utoipa::openapi::security::HttpAuthScheme::Bearer)
-                        .build()
-                )
-            );
-        }
-    }
-}

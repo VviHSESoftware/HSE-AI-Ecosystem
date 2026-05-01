@@ -1,6 +1,8 @@
-use axum::{extract::{State, Multipart}, http::StatusCode};
+use crate::state::GatewayService;
+use ai_gateway_client::AudioUpload;
+use axum::extract::{Multipart, State};
+use common_infra::AppError;
 use std::sync::Arc;
-use crate::{state::GatewayService, error::AppError};
 
 #[utoipa::path(post, path = "/v1/asr", request_body(content = AudioUpload,content_type = "multipart/form-data"), responses((status = 200, description = "Verbose JSON response")), security(("bearerAuth" = [])))]
 pub async fn asr(State(state): State<Arc<GatewayService>>, mut multipart: Multipart) -> Result<axum::Json<serde_json::Value>, AppError> {
@@ -13,5 +15,5 @@ pub async fn asr(State(state): State<Arc<GatewayService>>, mut multipart: Multip
             return Ok(axum::Json(raw));
         }
     }
-    Err(AppError(StatusCode::BAD_REQUEST, "Missing file field".into()))
+    Err(AppError::BadRequest("Missing file field".into()))
 }

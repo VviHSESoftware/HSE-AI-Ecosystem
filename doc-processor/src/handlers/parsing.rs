@@ -1,7 +1,8 @@
 use axum::{extract::{State, Json, Multipart}, http::StatusCode};
 use std::sync::Arc;
 use tracing::info;
-use crate::{schemas::*, state::DocumentService, error::AppError};
+use crate::{schemas::*, state::DocumentService};
+use common_infra::AppError;
 
 #[utoipa::path(post, path = "/api/v1/parseVideo", request_body = ParseVideoRequest, responses((status = 200, body = ParseVideoResponse)), security(("bearerAuth" = [])))]
 pub async fn parse_video(State(state): State<Arc<DocumentService>>, Json(req): Json<ParseVideoRequest>) -> Result<Json<ParseVideoResponse>, AppError> {
@@ -38,15 +39,15 @@ pub async fn parse_document(
     }
 
     if file_bytes.is_empty() {
-        return Err(AppError(StatusCode::BAD_REQUEST, "No file provided".into()));
+        return Err(AppError::BadRequest("No file provided".into()));
     }
     if ext.is_empty() {
-        return Err(AppError(StatusCode::BAD_REQUEST, "File extension missing".into()));
+        return Err(AppError::BadRequest("File extension missing".into()));
     }
 
     let supported = ["docx", "pptx", "doc", "ppt", "pdf", "png", "jpg", "jpeg"];
     if !supported.contains(&ext.as_str()) {
-        return Err(AppError(StatusCode::BAD_REQUEST, format!("Extension .{} not supported", ext)));
+        return Err(AppError::BadRequest(format!("Extension .{} not supported", ext)));
     }
 
     info!("Starting processing for file type: .{}", ext);

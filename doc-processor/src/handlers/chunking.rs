@@ -1,6 +1,7 @@
 use axum::{extract::{State, Json}};
 use std::sync::Arc;
-use crate::{schemas::*, state::DocumentService, error::AppError};
+use crate::{schemas::*, state::DocumentService};
+use common_infra::AppError;
 
 #[utoipa::path(post, path = "/api/v1/chunkText", request_body = ChunkTextRequest, responses((status = 200, body = ChunkTextResponse)), security(("bearerAuth" = [])))]
 pub async fn chunk_text(State(state): State<Arc<DocumentService>>, Json(req): Json<ChunkTextRequest>) -> Result<Json<ChunkTextResponse>, AppError> {

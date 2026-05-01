@@ -25,18 +25,6 @@ lazy_static! {
     pub static ref AI_LATENCY: HistogramVec = register_histogram_vec!(
         "ai_request_duration_seconds", "Response time", &["model", "provider"]
     ).unwrap();
-
-    pub static ref HTTP_REQUESTS_TOTAL: IntCounterVec = register_int_counter_vec!(
-        "http_requests_total",
-        "Total number of HTTP requests",
-        &["method", "path", "status"]
-    ).unwrap();
-
-    pub static ref HTTP_REQUEST_DURATION: HistogramVec = register_histogram_vec!(
-        "http_request_duration_seconds",
-        "HTTP request duration in seconds",
-        &["method", "path"]
-    ).unwrap();
 }
 
 pub fn update_gateway_status_metrics(status_report: &Value) {

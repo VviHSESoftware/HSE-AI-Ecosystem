@@ -1,7 +1,6 @@
 use lazy_static::lazy_static;
 use prometheus::{
-    register_histogram_vec, register_int_counter_vec, HistogramVec,
-    IntCounterVec,
+    register_histogram_vec, register_int_counter_vec, HistogramVec, IntCounterVec,
 };
 
 lazy_static! {
@@ -16,4 +15,12 @@ lazy_static! {
         "HTTP request duration in seconds",
         &["method", "path"]
     ).unwrap();
+}
+
+pub fn register_process_metrics() {
+    #[cfg(target_os = "linux")]
+    {
+        let process_collector = prometheus::process_collector::ProcessCollector::for_self();
+        let _ = prometheus::register(Box::new(process_collector));
+    }
 }

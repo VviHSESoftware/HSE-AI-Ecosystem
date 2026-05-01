@@ -10,7 +10,6 @@ reqwest = { workspace = true }
 tokio = { workspace = true }
 
 # Serialization
-bincode = { workspace = true }
 dotenvy = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
@@ -19,13 +18,12 @@ serde_json = { workspace = true }
 sqlx = { workspace = true }
 
 # Metrics & Logging
-prometheus = { workspace = true }
 tracing = { workspace = true }
-tracing-subscriber = { workspace = true }
 
 # Swagger / OpenAPI
 utoipa = { workspace = true }
 utoipa-swagger-ui = { workspace = true }
 
-# Utils
-lazy_static = { workspace = true }
+# Internal
+ai-gateway-client = { workspace = true }
+common-infra = { workspace = true }

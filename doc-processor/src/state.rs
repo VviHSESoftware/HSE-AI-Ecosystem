@@ -1,3 +1,4 @@
+use std::collections::HashSet;
 use crate::config::AppEnv;
 use crate::schemas::*;
 use reqwest::{Client, multipart};
@@ -11,10 +12,17 @@ use text_splitter::{TextSplitter, ChunkConfig};
 use tracing::{info, error};
 use futures::future::join_all;
 use tracing::log::warn;
+use common_infra::HasApiTokens;
 
 pub struct DocumentService {
     pub env: AppEnv,
     pub client: Client,
+}
+
+impl HasApiTokens for DocumentService {
+    fn get_api_tokens(&self) -> &HashSet<String> {
+        &self.env.api_tokens
+    }
 }
 
 impl DocumentService {

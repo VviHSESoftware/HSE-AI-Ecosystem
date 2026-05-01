@@ -16,9 +16,7 @@ serde = { workspace = true }
 serde_json = { workspace = true }
 
 # Metrics & Logging
-prometheus = { workspace = true }
 tracing = { workspace = true }
-tracing-subscriber = { workspace = true }
 
 # OpenAPI
 utoipa = { workspace = true }
@@ -28,8 +26,11 @@ utoipa-swagger-ui = { workspace = true }
 text-splitter = { workspace = true }
 
 # Utils
-lazy_static = { workspace = true }
 regex = { workspace = true }
 tempfile = { workspace = true }
 url = { workspace = true }
 uuid = { workspace = true }
+
+# Internal
+ai-gateway-client = { workspace = true }
+common-infra = { workspace = true }

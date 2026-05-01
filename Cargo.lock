@@ -310,6 +310,23 @@ dependencies = [
 ]
 
 [[package]]
+name = "common-infra"
+version = "1.0.0"
+dependencies = [
+ "axum",
+ "bincode",
+ "lazy_static",
+ "prometheus",
+ "reqwest",
+ "serde_json",
+ "sqlx",
+ "thiserror 2.0.18",
+ "tracing",
+ "tracing-subscriber",
+ "utoipa",
+]
+
+[[package]]
 name = "concurrent-queue"
 version = "2.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -992,6 +1009,7 @@ version = "1.0.0"
 dependencies = [
  "ai-gateway-client",
  "axum",
+ "common-infra",
  "dotenvy",
  "lazy_static",
  "prometheus",
@@ -1035,17 +1053,16 @@ dependencies = [
 name = "hse-chat-orchestrator"
 version = "1.0.0"
 dependencies = [
+ "ai-gateway-client",
  "axum",
+ "common-infra",
  "dotenvy",
- "lazy_static",
- "prometheus",
  "regex",
  "reqwest",
  "serde",
  "serde_json",
  "tokio",
  "tracing",
- "tracing-subscriber",
  "utoipa",
  "utoipa-swagger-ui",
 ]
@@ -1054,11 +1071,11 @@ dependencies = [
 name = "hse-document-processor"
 version = "1.0.0"
 dependencies = [
+ "ai-gateway-client",
  "axum",
+ "common-infra",
  "dotenvy",
  "futures",
- "lazy_static",
- "prometheus",
  "regex",
  "reqwest",
  "serde",
@@ -1067,7 +1084,6 @@ dependencies = [
  "text-splitter",
  "tokio",
  "tracing",
- "tracing-subscriber",
  "url",
  "utoipa",
  "utoipa-swagger-ui",
@@ -1078,11 +1094,12 @@ dependencies = [
 name = "hse-kb-controller"
 version = "1.0.0"
 dependencies = [
+ "ai-gateway-client",
  "axum",
  "bincode",
+ "common-infra",
  "dotenvy",
  "hex",
- "lazy_static",
  "prometheus",
  "reqwest",
  "serde",
@@ -1101,18 +1118,16 @@ dependencies = [
 name = "hse-kb-interface"
 version = "1.0.0"
 dependencies = [
+ "ai-gateway-client",
  "axum",
- "bincode",
+ "common-infra",
  "dotenvy",
- "lazy_static",
- "prometheus",
  "reqwest",
  "serde",
  "serde_json",
  "sqlx",
  "tokio",
  "tracing",
- "tracing-subscriber",
  "utoipa",
  "utoipa-swagger-ui",
 ]

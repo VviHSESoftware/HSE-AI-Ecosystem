@@ -1,12 +1,20 @@
+use std::collections::HashSet;
 use crate::config::AppEnv;
 use reqwest::Client;
 use serde_json::json;
 use sqlx::{PgPool, Row};
+use common_infra::HasApiTokens;
 
 pub struct InterfaceState {
     pub env: AppEnv,
     pub db: PgPool,
     pub client: Client,
+}
+
+impl HasApiTokens for InterfaceState {
+    fn get_api_tokens(&self) -> &HashSet<String> {
+        &self.env.api_tokens
+    }
 }
 
 impl InterfaceState {

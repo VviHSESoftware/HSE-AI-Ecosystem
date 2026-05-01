@@ -2,15 +2,16 @@ use axum::{extract::{State, Json, Multipart}, http::StatusCode, Extension};
 use std::sync::Arc;
 use serde_json::{json, Value};
 use sqlx::Row;
-use crate::{schemas::*, state::KbControllerState, error::AppError};
+use crate::{schemas::*, state::KbControllerState};
 use crate::middlewares::SystemContext;
+use common_infra::AppError;
 
 #[utoipa::path(post, path = "/api/v1/addModuleBase", request_body = AddModuleBaseReq, responses((status = 200, body = ModuleIdRes)), security(("bearerAuth" = [])))]
 pub async fn add_module_base(State(state): State<Arc<KbControllerState>>, Extension(ctx): Extension<SystemContext>, Json(req): Json<AddModuleBaseReq>) -> Result<Json<ModuleIdRes>, AppError> {
     state.check_access(ctx.system_id, req.parent_module_id).await?;
 
     let p_row = sqlx::query("SELECT path FROM modules WHERE id = $1").bind(req.parent_module_id)
-        .fetch_one(&state.db).await.map_err(|_| AppError(StatusCode::NOT_FOUND, "Parent module not found".into()))?;
+        .fetch_one(&state.db).await.map_err(|_| AppError::NotFound("Parent module not found".into()))?;
 
     let row = sqlx::query("INSERT INTO modules (name, type, url, external_id, external_type, parent_id) VALUES ($1, 'Base', $2, $3, $4, $5) RETURNING id")
         .bind(req.name).bind(req.url).bind(req.external_id).bind(req.external_type).bind(req.parent_module_id)
@@ -90,7 +91,7 @@ pub async fn set_document_type(State(state): State<Arc<KbControllerState>>, Exte
         }
     }
 
-    if module_id == 0 || file_bytes.is_empty() { return Err(AppError(StatusCode::BAD_REQUEST, "Missing fields".into())); }
+    if module_id == 0 || file_bytes.is_empty() { return Err(AppError::BadRequest("Missing fields".into())); }
 
     state.check_access(ctx.system_id, module_id).await?;
 

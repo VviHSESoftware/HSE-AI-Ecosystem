@@ -1,11 +1,19 @@
+use std::collections::HashSet;
 use crate::{config::AppEnv, schemas::*};
 use reqwest::Client;
 use serde_json::{json, Value};
 use regex::Regex;
+use common_infra::HasApiTokens;
 
 pub struct RouterState {
     pub env: AppEnv,
     pub client: Client,
+}
+
+impl HasApiTokens for RouterState {
+    fn get_api_tokens(&self) -> &HashSet<String> {
+        &self.env.api_tokens
+    }
 }
 
 impl RouterState {

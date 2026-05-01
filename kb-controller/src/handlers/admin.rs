@@ -1,8 +1,9 @@
 use crate::schemas::{CreateSystemReq, CreateSystemRes};
-use crate::{error::AppError, state::KbControllerState};
+use crate::{state::KbControllerState};
 use axum::extract::{Json, State};
 use sha2::{Digest, Sha256};
 use std::sync::Arc;
+use common_infra::AppError;
 
 #[utoipa::path(post, path = "/api/v1/admin/createSystem", request_body = CreateSystemReq, responses((status = 200, body = CreateSystemRes)), security(("bearerAuth" = [])))]
 pub async fn create_system(

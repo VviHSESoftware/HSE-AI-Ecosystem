@@ -1,9 +1,6 @@
 mod config;
 mod db;
-mod error;
 mod handlers;
-mod metrics;
-mod middlewares;
 mod openapi;
 mod schemas;
 mod state;
@@ -13,29 +10,21 @@ use sqlx::postgres::PgPoolOptions;
 use std::sync::Arc;
 use tokio::net::TcpListener;
 use tracing::info;
-use tracing_subscriber::EnvFilter;
 use utoipa::OpenApi;
 use utoipa_swagger_ui::SwaggerUi;
 
 use config::AppEnv;
 use state::InterfaceState;
 
-fn register_process_metrics() {
-    #[cfg(target_os = "linux")]
-    {
-        let process_collector = prometheus::process_collector::ProcessCollector::for_self();
-        prometheus::register(Box::new(process_collector)).ok();
-    }
-}
+use common_infra::{
+    init_tracing, register_process_metrics,
+    track_metrics, common_auth_guard, system_handlers
+};
 
 #[tokio::main]
 async fn main() {
+    init_tracing("HSE Knowledge Base Interface");
     register_process_metrics();
-
-    tracing_subscriber::fmt()
-        .json()
-        .with_env_filter(EnvFilter::from_default_env().add_directive("info".parse().unwrap()))
-        .init();
 
     let env = AppEnv::load();
     info!("Starting {} v{}", env.project_name, env.app_version);
@@ -56,15 +45,15 @@ async fn main() {
         .route("/documentPageQuery", post(handlers::query::document_page_query))
         .route("/fullContentQuery", post(handlers::query::full_content_query))
         .route("/availableStructure", post(handlers::query::available_structure))
-        .route_layer(middleware::from_fn_with_state(service.clone(), middlewares::auth_guard));
+        .route_layer(middleware::from_fn_with_state(service.clone(), common_auth_guard));
 
     let app = Router::new()
-        .route("/health", get(handlers::system::health))
-        .route("/metrics", get(handlers::system::metrics))
+        .route("/health", get(system_handlers::health))
+        .route("/metrics", get(system_handlers::metrics))
         .nest("/api/v1", query_routes)
         .merge(SwaggerUi::new("/docs").url("/api-docs/openapi.json", openapi::ApiDoc::openapi()))
         .with_state(service)
-        .layer(middleware::from_fn(middlewares::track_metrics));
+        .layer(middleware::from_fn(track_metrics));
 
     let listener = TcpListener::bind("0.0.0.0:8000").await.unwrap();
     info!("Listening on http://0.0.0.0:8000");
