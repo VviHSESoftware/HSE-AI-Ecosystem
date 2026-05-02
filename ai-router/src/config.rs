@@ -2,8 +2,6 @@ use std::collections::HashSet;
 
 #[derive(Debug, Clone)]
 pub struct AppEnv {
-    pub project_name: String,
-    pub app_version: String,
     pub api_tokens: HashSet<String>,
 
     pub ai_gateway_url: String,
@@ -23,8 +21,6 @@ impl AppEnv {
         let api_tokens: HashSet<String> = tokens_str.split(',').filter(|s| !s.is_empty()).map(|s| s.to_string()).collect();
 
         Self {
-            project_name: std::env::var("PROJECT_NAME").unwrap_or_else(|_| "HSE AI Router".into()),
-            app_version: std::env::var("APP_VERSION").unwrap_or_else(|_| "1.0.0".into()),
             api_tokens,
             ai_gateway_url: std::env::var("AI_GATEWAY_URL").unwrap_or_else(|_| "http://ai-gateway:8000/v1".into()),
             ai_gateway_token: std::env::var("AI_GATEWAY_TOKEN").unwrap_or_default(),

@@ -10,6 +10,7 @@ COPY Cargo.toml Cargo.lock ./
 
 COPY ai-gateway/Cargo.toml ./ai-gateway/
 COPY ai-gateway/src ./ai-gateway/src
+COPY libs ./libs
 
 RUN cargo build --target x86_64-unknown-linux-musl --release
 

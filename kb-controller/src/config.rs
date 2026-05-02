@@ -1,9 +1,6 @@
 
 #[derive(Debug, Clone)]
 pub struct AppEnv {
-    pub project_name: String,
-    pub app_version: String,
-
     pub database_url: String,
 
     pub gateway_url: String,
@@ -23,8 +20,6 @@ impl AppEnv {
         dotenvy::dotenv().ok();
 
         Self {
-            project_name: std::env::var("PROJECT_NAME").unwrap_or_else(|_| "HSE KB Controller".into()),
-            app_version: std::env::var("APP_VERSION").unwrap_or_else(|_| "1.0.0".into()),
             database_url: std::env::var("DATABASE_URL").unwrap_or_else(|_| "postgres://postgres:postgres@localhost:5432/kb_db".into()),
             gateway_url: std::env::var("GATEWAY_URL").unwrap_or_else(|_| "http://localhost:8000".into()),
             gateway_token: std::env::var("GATEWAY_TOKEN").unwrap_or_default(),

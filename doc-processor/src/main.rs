@@ -3,6 +3,7 @@ mod handlers;
 mod openapi;
 mod schemas;
 mod state;
+pub mod services;
 
 use axum::{routing::{get, post}, Router, middleware};
 use std::sync::Arc;
@@ -11,22 +12,25 @@ use tracing::info;
 use utoipa::OpenApi;
 use utoipa_swagger_ui::SwaggerUi;
 use config::AppEnv;
-use state::DocumentService;
+use state::AppState;
 
 use common_infra::{
     init_tracing, register_process_metrics,
     track_metrics, common_auth_guard, system_handlers
 };
 
+pub const PROJECT_NAME: &str = env!("CARGO_PKG_NAME");
+pub const APP_VERSION: &str = env!("CARGO_PKG_VERSION");
+
 #[tokio::main]
 async fn main() {
-    init_tracing("HSE Doc Processor");
+    init_tracing(PROJECT_NAME);
     register_process_metrics();
-    
-    let env = AppEnv::load();
-    info!("Starting {} v{}", env.project_name, env.app_version);
 
-    let service = Arc::new(DocumentService::new(env));
+    let env = AppEnv::load();
+    info!("Starting {} v{}", PROJECT_NAME, APP_VERSION);
+
+    let service = Arc::new(AppState::new(env));
 
     let auth_routes = Router::new()
         .route("/chunkText", post(handlers::chunking::chunk_text))
@@ -39,7 +43,7 @@ async fn main() {
     let app = Router::new()
         .route("/health", get(system_handlers::health))
         .route("/metrics", get(system_handlers::metrics))
-        .nest("/api/v1", auth_routes)
+        .nest("/v1", auth_routes)
         .merge(SwaggerUi::new("/docs").url("/api-docs/openapi.json", openapi::ApiDoc::openapi()))
         .with_state(service)
         .layer(axum::middleware::from_fn(track_metrics));

@@ -15,6 +15,9 @@ use utoipa_swagger_ui::SwaggerUi;
 use config::{AppEnv, DynamicConfig};
 use state::GatewayService;
 
+pub const PROJECT_NAME: &str = env!("CARGO_PKG_NAME");
+pub const APP_VERSION: &str = env!("CARGO_PKG_VERSION");
+
 use common_infra::{
     init_tracing, register_process_metrics,
     track_metrics, common_auth_guard, system_handlers
@@ -22,11 +25,11 @@ use common_infra::{
 
 #[tokio::main]
 async fn main() {
-    init_tracing("HSE AI Gateway");
+    init_tracing(PROJECT_NAME);
     register_process_metrics();
 
     let env = AppEnv::load();
-    info!("Starting {} v{}", env.project_name, env.app_version);
+    info!("Starting {} v{}", PROJECT_NAME, APP_VERSION);
 
     let service = Arc::new(GatewayService::new(env));
 

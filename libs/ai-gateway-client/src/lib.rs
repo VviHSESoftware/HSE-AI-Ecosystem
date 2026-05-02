@@ -3,3 +3,4 @@ pub mod client;
 
 pub use types::*;
 pub use client::AiGatewayClient;
+pub use client::AiGateway;

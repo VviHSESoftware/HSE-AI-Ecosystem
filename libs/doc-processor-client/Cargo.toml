@@ -1,0 +1,26 @@
+[package]
+name = "doc-processor-client"
+version = "1.0.0"
+edition = "2024"
+
+[dependencies]
+# Web & Async
+async-trait = { workspace = true }
+reqwest = { workspace = true }
+
+# Serialization
+serde = { workspace = true }
+serde_json = { workspace = true }
+
+# OpenAPI
+utoipa = { workspace = true, optional = true }
+
+# Utils
+thiserror = { workspace = true }
+
+# Internal
+common-infra = { path = "../common-infra" }
+
+[features]
+default = []
+openapi = ["dep:utoipa"]

@@ -561,6 +561,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "doc-processor-client"
+version = "1.0.0"
+dependencies = [
+ "async-trait",
+ "common-infra",
+ "reqwest",
+ "serde",
+ "serde_json",
+ "thiserror 2.0.18",
+ "utoipa",
+]
+
+[[package]]
 name = "dotenvy"
 version = "0.15.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1075,11 +1088,11 @@ dependencies = [
  "ai-gateway-client",
  "axum",
  "common-infra",
+ "doc-processor-client",
  "dotenvy",
  "futures",
  "regex",
  "reqwest",
- "serde",
  "serde_json",
  "tempfile",
  "text-splitter",

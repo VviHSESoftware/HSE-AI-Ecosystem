@@ -12,7 +12,6 @@ tokio = { workspace = true }
 
 # Serialization
 dotenvy = { workspace = true }
-serde = { workspace = true }
 serde_json = { workspace = true }
 
 # Metrics & Logging
@@ -33,4 +32,5 @@ uuid = { workspace = true }
 
 # Internal
 ai-gateway-client = { workspace = true }
+doc-processor-client = { workspace = true }
 common-infra = { workspace = true }

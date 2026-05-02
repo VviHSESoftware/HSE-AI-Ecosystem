@@ -4,6 +4,10 @@ use common_infra::{system_handlers, openapi::SecurityAddon};
 
 #[derive(OpenApi)]
 #[openapi(
+    info(
+        title = env!("CARGO_PKG_NAME"),
+        version = env!("CARGO_PKG_VERSION"),
+    ),
     paths(
         system_handlers::health, system_handlers::metrics,
         chunking::chunk_text, chunking::chunk_partitioned,

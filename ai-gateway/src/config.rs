@@ -4,8 +4,6 @@ use axum::http::HeaderValue;
 
 #[derive(Debug, Clone)]
 pub struct AppEnv {
-    pub project_name: String,
-    pub app_version: String,
     pub api_tokens: HashSet<String>,
     pub proxy_url: Option<String>,
 }
@@ -17,8 +15,6 @@ impl AppEnv {
         let api_tokens: HashSet<String> = tokens_str.split(',').map(|s| s.to_string()).collect();
 
         Self {
-            project_name: std::env::var("PROJECT_NAME").unwrap_or_else(|_| "HSE AI Gateway".into()),
-            app_version: std::env::var("APP_VERSION").unwrap_or_else(|_| "1.0.0".into()),
             api_tokens,
             proxy_url: std::env::var("PROXY_URL").ok().filter(|s| !s.is_empty()),
         }

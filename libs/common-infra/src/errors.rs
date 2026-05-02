@@ -78,3 +78,9 @@ impl From<String> for AppError {
         AppError::Internal(err)
     }
 }
+
+impl From<&str> for AppError {
+    fn from(err: &str) -> Self {
+        AppError::Internal(err.to_string())
+    }
+}

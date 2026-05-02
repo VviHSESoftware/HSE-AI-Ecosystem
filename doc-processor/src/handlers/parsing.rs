@@ -1,12 +1,12 @@
 use axum::{extract::{State, Json, Multipart}, http::StatusCode};
 use std::sync::Arc;
 use tracing::info;
-use crate::{schemas::*, state::DocumentService};
+use crate::{schemas::*, state::AppState};
 use common_infra::AppError;
 
 #[utoipa::path(post, path = "/api/v1/parseVideo", request_body = ParseVideoRequest, responses((status = 200, body = ParseVideoResponse)), security(("bearerAuth" = [])))]
-pub async fn parse_video(State(state): State<Arc<DocumentService>>, Json(req): Json<ParseVideoRequest>) -> Result<Json<ParseVideoResponse>, AppError> {
-    let result = state.parse_video(&req.video_url).await?;
+pub async fn parse_video(State(state): State<Arc<AppState>>, Json(req): Json<ParseVideoRequest>) -> Result<Json<ParseVideoResponse>, AppError> {
+    let result = state.parsing.parse_video(&req.video_url).await?;
     Ok(Json(result))
 }
 
@@ -18,7 +18,7 @@ pub async fn parse_video(State(state): State<Arc<DocumentService>>, Json(req): J
     security(("bearerAuth" = []))
 )]
 pub async fn parse_document(
-    State(state): State<Arc<DocumentService>>,
+    State(state): State<Arc<AppState>>,
     mut multipart: Multipart
 ) -> Result<Json<ParseDocumentResponse>, AppError> {
     let mut file_bytes = Vec::new();
@@ -52,7 +52,7 @@ pub async fn parse_document(
 
     info!("Starting processing for file type: .{}", ext);
 
-    let result = state.process_document(&ext, file_bytes).await?;
+    let result = state.parsing.process_document(&ext, file_bytes).await?;
     Ok(Json(result))
 }
 
