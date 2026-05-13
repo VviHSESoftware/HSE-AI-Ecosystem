@@ -26,7 +26,7 @@ use common_infra::{
 #[tokio::main]
 async fn main() {
     init_tracing(PROJECT_NAME);
-    register_process_metrics();
+    let metrics_handle = register_process_metrics();
 
     let env = AppEnv::load();
     info!("Starting {} v{}", PROJECT_NAME, APP_VERSION);
@@ -54,7 +54,7 @@ async fn main() {
 
     let app = Router::new()
         .route("/health", get(system_handlers::health))
-        .route("/metrics", get(system_handlers::metrics))
+        .route("/metrics", get(move || std::future::ready(metrics_handle.render())))
         .nest("/v1", auth_routes)
         .merge(SwaggerUi::new("/docs").url("/api-docs/openapi.json", openapi::ApiDoc::openapi()))
         .with_state(service)

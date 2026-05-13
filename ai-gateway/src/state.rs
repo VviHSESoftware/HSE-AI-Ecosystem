@@ -7,6 +7,7 @@ use std::sync::Arc;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 use tokio::sync::RwLock;
 use tracing::{error, info};
+use ai_gateway_client::{EmbeddingResponse, LLMResponse};
 use common_infra::HasApiTokens;
 
 pub struct GatewayState {
@@ -90,19 +91,34 @@ impl GatewayService {
 
         let res = req.send().await;
         let duration = start.elapsed().as_secs_f64();
-        AI_LATENCY.with_label_values(&[&m_settings.remote_model_id, &m_settings.provider_id]).observe(duration);
+        metrics::histogram!(
+            "ai_request_duration_seconds",
+            "model" => m_settings.remote_model_id.clone(),
+            "provider" => m_settings.provider_id.clone()
+        ).record(duration);
 
         match res {
             Ok(response) => {
                 let status = response.status();
-                AI_REQUESTS.with_label_values(&[m_settings.remote_model_id.as_str(), mode, &m_settings.provider_id, status.as_str()]).inc();
+                metrics::counter!(
+                    "ai_requests_total",
+                    "model" => m_settings.remote_model_id.clone(),
+                    "mode" => mode.to_string(),
+                    "provider" => m_settings.provider_id.clone(),
+                    "status_code" => status.as_str().to_string()
+                ).increment(1);
 
                 if status.is_success() {
                     let data = response.text().await.map_err(|e| e.to_string())?;
                     match serde_json::from_str::<serde_json::Value>(&data) {
                         Ok(data) => {
                             if let Some(tokens) = data.pointer("/usage/total_tokens").and_then(|v| v.as_i64()) {
-                                TOKENS_SPENT.with_label_values(&[m_settings.remote_model_id.as_str(), mode, &m_settings.provider_id]).inc_by(tokens as u64);
+                                metrics::counter!(
+                                    "ai_tokens_total",
+                                    "model" => m_settings.remote_model_id.clone(),
+                                    "mode" => mode.to_string(),
+                                    "provider" => m_settings.provider_id.clone()
+                                ).increment(tokens as u64);
                             }
                             Ok(data)
                         }
@@ -123,7 +139,13 @@ impl GatewayService {
                 }
             }
             Err(e) => {
-                AI_REQUESTS.with_label_values(&[m_settings.remote_model_id.as_str(), mode, &m_settings.provider_id, "error"]).inc();
+                metrics::counter!(
+                    "ai_requests_total",
+                    "model" => m_settings.remote_model_id.clone(),
+                    "mode" => mode.to_string(),
+                    "provider" => m_settings.provider_id.clone(),
+                    "status_code" => "error".to_string()
+                ).increment(1);
                 error!("Connection Error: {}", e);
                 Err(e.to_string())
             }
@@ -226,7 +248,41 @@ impl GatewayService {
         }
     }
 
-    pub async fn chat_completion(&self, mut payload: serde_json::Value, mode: &str) -> Result<serde_json::Value, String> {
+    fn parse_llm_response(&self, raw: serde_json::Value) -> Result<LLMResponse, String> {
+        if let Some(content) = raw.pointer("/choices/0/message/content").and_then(|v| v.as_str()) {
+            return Ok(LLMResponse {
+                content: content.to_string(),
+                model: raw["model"].as_str().unwrap_or("unknown").to_string(),
+                usage: raw["usage"].clone(),
+            });
+        }
+
+        if let Some(outputs) = raw.get("output").and_then(|v| v.as_array()) {
+            let message_block = outputs.iter().find(|item| item["type"] == "message");
+
+            if let Some(block) = message_block {
+                if let Some(text) = block.pointer("/content/0/text").and_then(|v| v.as_str()) {
+                    return Ok(LLMResponse {
+                        content: text.to_string(),
+                        model: raw["model"].as_str().unwrap_or("unknown").to_string(),
+                        usage: raw["usage"].clone(),
+                    });
+                }
+            }
+        }
+
+        if let Some(content) = raw["content"].as_str() {
+            return Ok(LLMResponse {
+                content: content.to_string(),
+                model: raw["model"].as_str().unwrap_or("unknown").to_string(),
+                usage: raw["usage"].clone(),
+            });
+        }
+
+        Err(format!("Could not extract message content from provider response. Raw: {}", raw))
+    }
+
+    pub async fn chat_completion(&self, mut payload: serde_json::Value, mode: &str) -> Result<LLMResponse, String> {
         let (m_settings, client, base_url) = self.get_model_and_client(mode).await?;
 
         if let Some(obj) = payload.as_object_mut() {
@@ -236,24 +292,58 @@ impl GatewayService {
         let mut req_body = m_settings.extra_payload.clone();
         req_body["model"] = json!(m_settings.remote_model_id);
         req_body["temperature"] = json!(m_settings.temperature);
-        if let Some(max) = m_settings.max_tokens { req_body["max_tokens"] = json!(max); }
 
-        if let Some(obj) = req_body.as_object_mut() {
-            if let Some(user_obj) = payload.as_object_mut() { obj.append(user_obj); }
-        }
+        let is_grok_responses_api = m_settings.provider_id == "grok";
+        let url = if is_grok_responses_api {
+            if let Some(msgs) = payload.get("messages") {
+                req_body["input"] = msgs.clone();
+            }
 
-        self.safe_request(client, format!("{}/chat/completions", base_url), Some(req_body), None, &m_settings, mode).await
+            req_body["store"]=json!(false);
+
+            if let Some(max) = m_settings.max_tokens {
+                req_body["max_output_tokens"] = json!(max);
+            }
+
+            format!("{}/responses", base_url)
+        }else{
+            if let Some(max) = m_settings.max_tokens { req_body["max_tokens"] = json!(max); }
+
+            if let Some(obj) = req_body.as_object_mut() {
+                if let Some(user_obj) = payload.as_object_mut() { obj.append(user_obj); }
+            }
+
+            format!("{}/chat/completions", base_url)
+        };
+
+        let raw = self.safe_request(client, url, Some(req_body), None, &m_settings, mode).await?;
+
+        self.parse_llm_response(raw)
     }
 
-    pub async fn create_embeddings(&self, input: String) -> Result<serde_json::Value, String> {
+    pub async fn create_embeddings(&self, input: String) -> Result<EmbeddingResponse, String> {
         let (m_settings, client, base_url) = self.get_model_and_client("embeddings").await?;
         let mut req_body = m_settings.extra_payload.clone();
         req_body["model"] = json!(m_settings.remote_model_id);
         req_body["input"] = json!(input);
-        self.safe_request(client, format!("{}/embeddings", base_url), Some(req_body), None, &m_settings, "embeddings").await
+        let raw = self.safe_request(client, format!("{}/embeddings", base_url), Some(req_body), None, &m_settings, "embeddings").await?;
+
+        let mut embeddings = vec![];
+        if let Some(data) = raw["data"].as_array() {
+            for item in data {
+                if let Some(arr) = item["embedding"].as_array() {
+                    let vec_f32: Vec<f32> = arr.iter().filter_map(|v| v.as_f64())
+                        .map(|v| v as f32)
+                        .collect();
+                    embeddings.push(vec_f32);
+                }
+            }
+        }
+
+        Ok(EmbeddingResponse { embeddings, model: raw["model"].as_str().unwrap_or("").to_string(), usage: raw["usage"].clone() })
     }
 
-    pub async fn vlm_analyze(&self, req: crate::schemas::VLMRequest) -> Result<serde_json::Value, String> {
+    pub async fn vlm_analyze(&self, req: crate::schemas::VLMRequest) -> Result<LLMResponse, String> {
         let (m_settings, client, base_url) = self.get_model_and_client("vlm").await?;
         let mut content = vec![
             json!({ "type": "text", "text": req.text })
@@ -269,7 +359,9 @@ impl GatewayService {
             "max_tokens": req.max_tokens.or(m_settings.max_tokens),
             "messages": [{ "role": "user", "content": content }]
         });
-        self.safe_request(client, format!("{}/chat/completions", base_url), Some(req_body), None, &m_settings, "vlm").await
+        let raw = self.safe_request(client, format!("{}/chat/completions", base_url), Some(req_body), None, &m_settings, "vlm").await?;
+
+        self.parse_llm_response(raw)
     }
 
     pub async fn transcribe_audio(&self, file_name: String, file_bytes: Vec<u8>) -> Result<serde_json::Value, String> {
