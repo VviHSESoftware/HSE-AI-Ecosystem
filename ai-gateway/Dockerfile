@@ -1,27 +1,30 @@
-FROM rust:1.95-bookworm as builder
-
-RUN apt-get update && apt-get install -y musl-tools clang && rm -rf /var/lib/apt/lists/*
-
+FROM lukemathwalker/cargo-chef:latest-rust-trixie AS planner
 WORKDIR /app
 
+COPY . .
+
+RUN cargo chef prepare --recipe-path recipe.json
+
+FROM lukemathwalker/cargo-chef:latest-rust-trixie AS cacher
+WORKDIR /app
+RUN apt-get update && apt-get install -y musl-tools clang && rm -rf /var/lib/apt/lists/*
 RUN rustup target add x86_64-unknown-linux-musl
 
-COPY Cargo.toml Cargo.lock ./
+COPY --from=planner /app/recipe.json recipe.json
 
-COPY ai-gateway/Cargo.toml ./ai-gateway/
-COPY ai-gateway/src ./ai-gateway/src
-COPY libs ./libs
+RUN cargo chef cook --release --target x86_64-unknown-linux-musl --recipe-path recipe.json
 
-RUN cargo build --target x86_64-unknown-linux-musl --release
+FROM cacher AS builder
+
+COPY . .
+
+RUN cargo build --release --target x86_64-unknown-linux-musl --bin hse-ai-gateway
 
 FROM scratch
-
 WORKDIR /app
 
-COPY --from=builder /app/target/x86_64-unknown-linux-musl/release/hse-ai-gateway .
-
+COPY --from=builder /app/target/x86_64-unknown-linux-musl/release/hse-ai-gateway ./hse-ai-gateway
 COPY ai-gateway/config.json ./ai-gateway/config.json
-
 COPY --from=builder /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/
 
 EXPOSE 8000

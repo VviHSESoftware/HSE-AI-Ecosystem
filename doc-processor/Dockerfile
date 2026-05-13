@@ -4,10 +4,9 @@ WORKDIR /app
 
 RUN apt-get update && apt-get install -y pkg-config libssl-dev && rm -rf /var/lib/apt/lists/*
 
-COPY Cargo.toml Cargo.lock ./
-COPY src ./src
+COPY . .
 
-RUN cargo build --release
+RUN cargo build --target x86_64-unknown-linux-musl --release -p hse-document-processor
 
 FROM debian:bookworm-slim
 
