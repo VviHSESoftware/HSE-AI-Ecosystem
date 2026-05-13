@@ -4,8 +4,8 @@ use std::collections::HashSet;
 pub struct AppEnv {
     pub api_tokens: HashSet<String>,
 
-    pub gateway_base_url: String,
-    pub gateway_api_token: String,
+    pub ai_gateway_url: String,
+    pub ai_gateway_token: String,
     pub vlm_batch_size: usize,
 
     pub dufs_url: String,
@@ -21,8 +21,8 @@ impl AppEnv {
 
         Self {
             api_tokens,
-            gateway_base_url: std::env::var("GATEWAY_API_URL").unwrap_or_else(|_| "http://localhost:8000".into()),
-            gateway_api_token: std::env::var("GATEWAY_API_KEY").unwrap_or_default(),
+            ai_gateway_url: std::env::var("AI_GATEWAY_URL").expect("AI_GATEWAY_URL is required"),
+            ai_gateway_token: std::env::var("AI_GATEWAY_TOKEN").expect("AI_GATEWAY_TOKEN is required"),
             vlm_batch_size: std::env::var("VLM_BATCH_SIZE").unwrap_or_else(|_| "10".into()).parse().unwrap_or(10),
             dufs_url: std::env::var("DUFS_URL").unwrap_or_else(|_| "http://dufs:5000".into()),
             dufs_user: std::env::var("DUFS_USER").unwrap_or_default(),

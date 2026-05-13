@@ -23,8 +23,8 @@ impl AppState {
         let chunking = Arc::new(ChunkingService::new());
 
         let ai_gateway = Arc::new(AiGatewayClient::new(
-            env.gateway_base_url.clone(),
-            env.gateway_api_token.clone(),
+            env.ai_gateway_url.clone(),
+            env.ai_gateway_token.clone(),
         ));
         
         let parsing = Arc::new(ParsingService::new(

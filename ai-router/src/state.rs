@@ -52,7 +52,7 @@ impl RouterState {
     }
 
     pub async fn get_kb_structure(&self, email: &str) -> Result<Value, String> {
-        let res = self.client.post(format!("{}/api/v1/availableStructure", self.env.kb_interface_url))
+        let res = self.client.post(format!("{}/v1/availableStructure", self.env.kb_interface_url))
             .header("Authorization", format!("Bearer {}", self.env.kb_interface_token))
             .json(&json!({ "email": email }))
             .send().await.map_err(|e| e.to_string())?;
@@ -62,7 +62,7 @@ impl RouterState {
     }
 
     pub async fn query_kb(&self, endpoint: &str, payload: Value) -> Result<Vec<KbQueryChunk>, String> {
-        let res = self.client.post(format!("{}/api/v1/{}", self.env.kb_interface_url, endpoint))
+        let res = self.client.post(format!("{}/v1/{}", self.env.kb_interface_url, endpoint))
             .header("Authorization", format!("Bearer {}", self.env.kb_interface_token))
             .json(&payload)
             .send().await.map_err(|e| e.to_string())?;

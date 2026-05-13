@@ -1,5 +1,5 @@
 use crate::{schemas::*, state::RouterState};
-use serde_json::{json, Value};
+use serde_json::{json};
 use tracing::{info, error};
 
 pub async fn process_pipeline(state: &RouterState, req: RouterRequest) -> Result<RouterResponse, String> {
@@ -32,7 +32,7 @@ You MUST return ONLY a JSON object choosing ONE of the following formats:
    - not recomended for modules having submodules
    {{"query_type": "full_content_query", "module_ids": [123]}}
 
-5. Direct Answer (ONLY if a page or timecode requested and it is out of bounds)
+5. Direct Answer (ONLY IF a page or timecode requested and it is out of bounds)
    {{"query_type": "direct_answer", "language": "ru", "direct_answer": "Извините, границы некорректны..."}}
 "#);
 
@@ -49,7 +49,7 @@ You MUST return ONLY a JSON object choosing ONE of the following formats:
     info!("Router decided tool: {}", query_type);
 
     let mut retrieved_chunks = vec![];
-    let mut module_used = query_type.to_string();
+    let module_used = query_type.to_string();
 
     if query_type == "direct_answer" {
         let ans = decision["direct_answer"].as_str().unwrap_or("Не удалось найти ответ.");

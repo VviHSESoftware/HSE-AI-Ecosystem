@@ -25,7 +25,7 @@ pub const APP_VERSION: &str = env!("CARGO_PKG_VERSION");
 #[tokio::main]
 async fn main() {
     init_tracing(PROJECT_NAME);
-    register_process_metrics();
+    let metrics_handle = register_process_metrics();
 
     let env = AppEnv::load();
     info!("Starting {} v{}", PROJECT_NAME, APP_VERSION);
@@ -34,8 +34,8 @@ async fn main() {
 
     let app = Router::new()
         .route("/health", get(system_handlers::health))
-        .route("/metrics", get(system_handlers::metrics))
-        .route("/api/v1/chat", post(handlers::chat::process_request))
+        .route("/metrics", get(move || std::future::ready(metrics_handle.render())))
+        .route("/v1/process", post(handlers::chat::process_request))
         .route_layer(middleware::from_fn_with_state(service.clone(), common_auth_guard))
         .merge(SwaggerUi::new("/docs").url("/api-docs/openapi.json", openapi::ApiDoc::openapi()))
         .with_state(service)

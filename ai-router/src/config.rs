@@ -22,10 +22,10 @@ impl AppEnv {
 
         Self {
             api_tokens,
-            ai_gateway_url: std::env::var("AI_GATEWAY_URL").unwrap_or_else(|_| "http://ai-gateway:8000/v1".into()),
-            ai_gateway_token: std::env::var("AI_GATEWAY_TOKEN").unwrap_or_default(),
-            kb_interface_url: std::env::var("KB_INTERFACE_URL").unwrap_or_else(|_| "http://kb-interface:8003/api/v1".into()),
-            kb_interface_token: std::env::var("KB_INTERFACE_TOKEN").unwrap_or_default(),
+            ai_gateway_url: std::env::var("AI_GATEWAY_URL").expect("AI_GATEWAY_URL is required"),
+            ai_gateway_token: std::env::var("AI_GATEWAY_TOKEN").expect("AI_GATEWAY_TOKEN is required"),
+            kb_interface_url: std::env::var("KB_INTERFACE_URL").expect("KB_INTERFACE_URL is required"),
+            kb_interface_token: std::env::var("KB_INTERFACE_TOKEN").expect("KB_INTERFACE_TOKEN is required"),
             router_model_mode: std::env::var("ROUTER_MODEL_MODE").unwrap_or_else(|_| "fast".into()),
             generation_model_mode: std::env::var("GENERATION_MODEL_MODE").unwrap_or_else(|_| "normal".into()),
         }
