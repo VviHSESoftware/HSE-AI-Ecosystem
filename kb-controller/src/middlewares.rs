@@ -23,14 +23,11 @@ pub async fn system_auth_guard(
             hasher.update(token.as_bytes());
             let hash = hex::encode(hasher.finalize());
 
-            let row = sqlx::query("SELECT module_id FROM module_system WHERE token_hash = $1")
-                .bind(hash)
-                .fetch_optional(&state.db)
+            let system_id_opt = state.repo.get_system_id_by_token(&hash)
                 .await
                 .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
 
-            if let Some(r) = row {
-                let system_id: i32 = sqlx::Row::get(&r, "module_id");
+            if let Some(system_id) = system_id_opt {
                 req.extensions_mut().insert(SystemContext { system_id });
                 return Ok(next.run(req).await);
             }

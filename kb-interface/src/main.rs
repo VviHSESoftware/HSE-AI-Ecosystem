@@ -1,9 +1,9 @@
 mod config;
-mod db;
 mod handlers;
 mod openapi;
 mod schemas;
 mod state;
+pub mod services;
 
 use axum::{routing::{get, post}, Router, middleware};
 use sqlx::postgres::PgPoolOptions;
@@ -20,6 +20,7 @@ use common_infra::{
     init_tracing, register_process_metrics,
     track_metrics, common_auth_guard, system_handlers
 };
+use kb_common::repository::KbRepository;
 
 pub const PROJECT_NAME: &str = env!("CARGO_PKG_NAME");
 pub const APP_VERSION: &str = env!("CARGO_PKG_VERSION");
@@ -27,7 +28,7 @@ pub const APP_VERSION: &str = env!("CARGO_PKG_VERSION");
 #[tokio::main]
 async fn main() {
     init_tracing(PROJECT_NAME);
-    register_process_metrics();
+    let metrics_handle = register_process_metrics();
 
     let env = AppEnv::load();
     info!("Starting {} v{}", PROJECT_NAME, APP_VERSION);
@@ -38,9 +39,11 @@ async fn main() {
         .await
         .expect("Failed to connect to Postgres");
 
-    db::init_db(&pool).await;
+    let repo = KbRepository::new(pool);
+    repo.init_schema().await.expect("Failed to initialize database schema");
+    info!("Database schema initialized successfully");
 
-    let service = Arc::new(InterfaceState::new(env, pool));
+    let service = Arc::new(InterfaceState::new(env, repo));
 
     let query_routes = Router::new()
         .route("/semanticQuery", post(handlers::query::semantic_query))
@@ -52,8 +55,8 @@ async fn main() {
 
     let app = Router::new()
         .route("/health", get(system_handlers::health))
-        .route("/metrics", get(system_handlers::metrics))
-        .nest("/api/v1", query_routes)
+        .route("/metrics", get(move || std::future::ready(metrics_handle.render())))
+        .nest("/v1", query_routes)
         .merge(SwaggerUi::new("/docs").url("/api-docs/openapi.json", openapi::ApiDoc::openapi()))
         .with_state(service)
         .layer(middleware::from_fn(track_metrics));

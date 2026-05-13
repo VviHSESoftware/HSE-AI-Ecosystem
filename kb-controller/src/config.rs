@@ -3,8 +3,8 @@
 pub struct AppEnv {
     pub database_url: String,
 
-    pub gateway_url: String,
-    pub gateway_token: String,
+    pub ai_gateway_url: String,
+    pub ai_gateway_token: String,
 
     pub doc_processor_url: String,
     pub doc_processor_token: String,
@@ -20,11 +20,11 @@ impl AppEnv {
         dotenvy::dotenv().ok();
 
         Self {
-            database_url: std::env::var("DATABASE_URL").unwrap_or_else(|_| "postgres://postgres:postgres@localhost:5432/kb_db".into()),
-            gateway_url: std::env::var("GATEWAY_URL").unwrap_or_else(|_| "http://localhost:8000".into()),
-            gateway_token: std::env::var("GATEWAY_TOKEN").unwrap_or_default(),
-            doc_processor_url: std::env::var("DOC_PROCESSOR_URL").unwrap_or_else(|_| "http://localhost:8001".into()),
-            doc_processor_token: std::env::var("DOC_PROCESSOR_TOKEN").unwrap_or_default(),
+            database_url: std::env::var("DATABASE_URL").expect("DATABASE_URL is required"),
+            ai_gateway_url: std::env::var("AI_GATEWAY_URL").expect("AI_GATEWAY_URL is required"),
+            ai_gateway_token: std::env::var("AI_GATEWAY_TOKEN").expect("AI_GATEWAY_TOKEN is required"),
+            doc_processor_url: std::env::var("DOC_PROCESSOR_URL").expect("DOC_PROCESSOR_URL is required"),
+            doc_processor_token: std::env::var("DOC_PROCESSOR_TOKEN").expect("DOC_PROCESSOR_TOKEN is required"),
             qdrant_url: std::env::var("QDRANT_URL").unwrap_or_else(|_| "http://qdrant:6333".into()),
             qdrant_api_key: std::env::var("QDRANT_API_KEY").unwrap_or_default(),
             admin_token: std::env::var("ADMIN_TOKEN").unwrap_or_else(|_| "SuperAdminSecret".into()),
