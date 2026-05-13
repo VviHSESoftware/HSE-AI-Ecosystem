@@ -20,20 +20,48 @@ impl std::fmt::Display for CheckMode {
 }
 
 #[derive(Debug, Deserialize, Serialize, Clone, ToSchema)]
-pub struct AssignmentMessage {
-    #[schema(example = "Write a Python function to sort a list.")]
-    pub task_description: String,
-    #[schema(example = "assignment_1_sort")]
-    pub task_name: String,
-    #[schema(example = "def sort_list(x): return sorted(x)")]
-    pub submission: String,
-    #[schema(example = "Correctness (100)")]
-    pub criteria: String,
-    #[schema(example = "student@hse.ru")]
-    pub email: String,
-    #[schema(example = "normal")]
+#[serde(tag = "type", rename_all = "snake_case")]
+pub enum TaskPayload {
+    Autocheck {
+        task_description: String,
+        task_name: String,
+        submission: String,
+        criteria: String,
+        email: String,
+    },
+    QuizGen {
+        task_description: String,
+        task_name: String,
+        submission: String,
+        email: String,
+    }
+}
+
+impl TaskPayload {
+    pub fn task_type(&self) -> &'static str {
+        match self {
+            TaskPayload::Autocheck { .. } => "autocheck",
+            TaskPayload::QuizGen { .. } => "quiz_gen",
+        }
+    }
+}
+
+#[derive(Debug, Deserialize, Serialize, Clone, ToSchema)]
+pub struct UniversalTaskRequest {
+    pub payload: TaskPayload,
     #[serde(default)]
     pub mode: CheckMode,
+}
+
+#[derive(Debug, Serialize, Deserialize, ToSchema)]
+pub struct AutocheckOutput {
+    pub grade: f64,
+    pub feedback: String,
+}
+
+#[derive(Debug, Serialize, Deserialize, ToSchema)]
+pub struct QuizGenOutput {
+    pub questions: Vec<serde_json::Value>,
 }
 
 #[derive(Debug, Serialize, ToSchema)]
@@ -49,11 +77,9 @@ pub struct ResultsRequest {
 #[derive(Debug, Serialize, ToSchema, sqlx::FromRow)]
 pub struct ResultItem {
     pub task_id: Uuid,
-    pub status: String, // "processing", "completed", "error"
+    pub status: String,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub grade: Option<f64>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub feedback: Option<String>,
+    pub task_result: Option<serde_json::Value>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub error: Option<String>,
 }
@@ -61,8 +87,7 @@ pub struct ResultItem {
 #[derive(Debug, Serialize, ToSchema, sqlx::FromRow)]
 pub struct VerdictResponse {
     pub status: String,
-    pub grade: Option<f64>,
-    pub feedback: Option<String>,
+    pub task_result: Option<serde_json::Value>,
     pub error: Option<String>,
     pub mode: String,
     pub created_at: chrono::DateTime<chrono::Utc>,
@@ -71,4 +96,11 @@ pub struct VerdictResponse {
 #[derive(Debug, Serialize, ToSchema, sqlx::FromRow)]
 pub struct SubmissionTextResponse {
     pub submission_text: String,
+}
+
+#[derive(Debug, Serialize, ToSchema)]
+pub struct SingleResponse {
+    pub task_result: Option<serde_json::Value>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub error: Option<String>,
 }

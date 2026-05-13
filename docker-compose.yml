@@ -4,7 +4,6 @@ include:
   - docker-compose.storage.yml
   - docker-compose.core.yml
   - docker-compose.interface.yml
-  - docker-compose.grading.yml
 
 networks:
   infra_monitoring_net:
