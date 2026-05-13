@@ -1,6 +1,8 @@
+use axum::extract::State;
 use axum::response::IntoResponse;
 use serde_json::{json, Value};
 use axum::Json;
+use metrics_exporter_prometheus::PrometheusHandle;
 
 #[cfg_attr(feature = "openapi", utoipa::path(
     get,
@@ -16,9 +18,6 @@ pub async fn health() -> Json<Value> {
     path = "/metrics",
     responses((status = 200, description = "Prometheus metrics"))
 ))]
-pub async fn metrics() -> impl IntoResponse {
-    let encoder = prometheus::TextEncoder::new();
-    let mut buffer = vec![];
-    prometheus::Encoder::encode(&encoder, &prometheus::gather(), &mut buffer).unwrap();
-    String::from_utf8(buffer).unwrap()
+pub async fn metrics(State(handle): State<PrometheusHandle>) -> impl IntoResponse {
+    handle.render()
 }

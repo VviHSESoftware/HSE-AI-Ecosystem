@@ -5,7 +5,6 @@ use axum::{
     http::StatusCode,
 };
 use std::time::Instant;
-use crate::metrics::{HTTP_REQUESTS_TOTAL, HTTP_REQUEST_DURATION};
 
 pub async fn track_metrics(req: Request, next: Next) -> Response {
     let path = req.uri().path().to_string();
@@ -28,8 +27,14 @@ pub async fn track_metrics(req: Request, next: Next) -> Response {
     let latency = start.elapsed().as_secs_f64();
     let status = response.status().as_u16().to_string();
 
-    HTTP_REQUESTS_TOTAL.with_label_values(&[method.as_str(), matched_path, &status]).inc();
-    HTTP_REQUEST_DURATION.with_label_values(&[method.as_str(), matched_path]).observe(latency);
+    let labels = [
+        ("method", method),
+        ("path", matched_path.to_string()),
+        ("status", status),
+    ];
+
+    metrics::counter!("http_requests_total", &labels).increment(1);
+    metrics::histogram!("http_request_duration_seconds", &labels[..2]).record(latency);
 
     response
 }

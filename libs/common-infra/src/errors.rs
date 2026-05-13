@@ -25,6 +25,9 @@ pub enum AppError {
 
     #[error("Gateway Error: {0}")]
     BadGateway(String),
+
+    #[error("Too many requests: {0}")]
+    TooManyRequests(String),
 }
 
 impl IntoResponse for AppError {
@@ -36,6 +39,7 @@ impl IntoResponse for AppError {
             AppError::Forbidden(m) => (StatusCode::FORBIDDEN, m),
             AppError::BadRequest(m) => (StatusCode::BAD_REQUEST, m),
             AppError::BadGateway(m) => (StatusCode::BAD_GATEWAY, m),
+            AppError::TooManyRequests(m) => (StatusCode::TOO_MANY_REQUESTS, m),
         };
 
         let body = Json(json!({
