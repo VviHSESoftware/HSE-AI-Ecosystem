@@ -1,9 +1,7 @@
-use axum::{extract::{Request, State, MatchedPath}, http::StatusCode, middleware::Next, response::Response};
-use std::sync::Arc;
 use crate::state::KbControllerState;
-use std::time::Instant;
-use sha2::{Sha256, Digest};
-use crate::metrics::{HTTP_REQUESTS_TOTAL, HTTP_REQUEST_DURATION};
+use axum::{extract::{Request, State}, http::StatusCode, middleware::Next, response::Response};
+use sha2::{Digest, Sha256};
+use std::sync::Arc;
 
 #[derive(Clone)]
 pub struct SystemContext {
@@ -25,52 +23,15 @@ pub async fn system_auth_guard(
             hasher.update(token.as_bytes());
             let hash = hex::encode(hasher.finalize());
 
-            let row = sqlx::query("SELECT module_id FROM module_system WHERE token_hash = $1")
-                .bind(hash)
-                .fetch_optional(&state.db)
+            let system_id_opt = state.repo.get_system_id_by_token(&hash)
                 .await
                 .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
 
-            if let Some(r) = row {
-                let system_id: i32 = sqlx::Row::get(&r, "module_id");
+            if let Some(system_id) = system_id_opt {
                 req.extensions_mut().insert(SystemContext { system_id });
                 return Ok(next.run(req).await);
             }
         }
     }
     Err(StatusCode::UNAUTHORIZED)
-}
-
-pub async fn admin_auth_guard(
-    State(state): State<Arc<KbControllerState>>,
-    req: Request,
-    next: Next,
-) -> Result<Response, StatusCode> {
-    let auth_header = req.headers().get("Authorization").and_then(|h| h.to_str().ok());
-    if let Some(auth_str) = auth_header {
-        if auth_str == format!("Bearer {}", state.env.admin_token) {
-            return Ok(next.run(req).await);
-        }
-    }
-    Err(StatusCode::FORBIDDEN)
-}
-
-pub async fn track_metrics(req: Request<axum::body::Body>, next: Next) -> Response {
-    let path = req.uri().path().to_string();
-    if path == "/metrics" || path == "/health" || path.starts_with("/docs") {
-        return next.run(req).await;
-    }
-
-    let start = Instant::now();
-    let method = req.method().clone().to_string();
-    let response = next.run(req).await;
-
-    let path = response.extensions().get::<MatchedPath>().map(|mp| mp.as_str()).unwrap_or("unknown");
-    let latency = start.elapsed().as_secs_f64();
-    let status = response.status().as_u16().to_string();
-
-    HTTP_REQUESTS_TOTAL.with_label_values(&[&method, &path, &status]).inc();
-    HTTP_REQUEST_DURATION.with_label_values(&[&method, &path]).observe(latency);
-
-    response
 }

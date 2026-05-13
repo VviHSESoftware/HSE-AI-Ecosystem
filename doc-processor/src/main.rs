@@ -1,44 +1,36 @@
 mod config;
-mod error;
 mod handlers;
-mod metrics;
 mod openapi;
 mod schemas;
-mod middlewares;
 mod state;
+pub mod services;
 
 use axum::{routing::{get, post}, Router, middleware};
 use std::sync::Arc;
 use tokio::net::TcpListener;
 use tracing::info;
-use tracing_subscriber::EnvFilter;
 use utoipa::OpenApi;
 use utoipa_swagger_ui::SwaggerUi;
-
 use config::AppEnv;
-use state::DocumentService;
+use state::AppState;
 
-fn register_process_metrics() {
-    #[cfg(target_os = "linux")]
-    {
-        let process_collector = prometheus::process_collector::ProcessCollector::for_self();
-        prometheus::register(Box::new(process_collector)).ok();
-    }
-}
+use common_infra::{
+    init_tracing, register_process_metrics,
+    track_metrics, common_auth_guard, system_handlers
+};
+
+pub const PROJECT_NAME: &str = env!("CARGO_PKG_NAME");
+pub const APP_VERSION: &str = env!("CARGO_PKG_VERSION");
 
 #[tokio::main]
 async fn main() {
-    register_process_metrics();
-
-    tracing_subscriber::fmt()
-        .json()
-        .with_env_filter(EnvFilter::from_default_env().add_directive("info".parse().unwrap()))
-        .init();
+    init_tracing(PROJECT_NAME);
+    let metrics_handle = register_process_metrics();
 
     let env = AppEnv::load();
-    info!("Starting {} v{}", env.project_name, env.app_version);
+    info!("Starting {} v{}", PROJECT_NAME, APP_VERSION);
 
-    let service = Arc::new(DocumentService::new(env));
+    let service = Arc::new(AppState::new(env));
 
     let auth_routes = Router::new()
         .route("/chunkText", post(handlers::chunking::chunk_text))
@@ -46,15 +38,15 @@ async fn main() {
         .route("/parseVideo", post(handlers::parsing::parse_video))
         .route("/parseDocument", post(handlers::parsing::parse_document))
         .route("/getSupportedDocumentTypes", get(handlers::parsing::get_supported_types))
-        .route_layer(middleware::from_fn_with_state(service.clone(), middlewares::auth_guard));
+        .route_layer(middleware::from_fn_with_state(service.clone(), common_auth_guard));
 
     let app = Router::new()
-        .route("/health", get(handlers::system::health))
-        .route("/metrics", get(handlers::system::metrics))
-        .nest("/api/v1", auth_routes)
+        .route("/health", get(system_handlers::health))
+        .route("/metrics", get(move || std::future::ready(metrics_handle.render())))
+        .nest("/v1", auth_routes)
         .merge(SwaggerUi::new("/docs").url("/api-docs/openapi.json", openapi::ApiDoc::openapi()))
         .with_state(service)
-        .layer(axum::middleware::from_fn(middlewares::track_metrics));
+        .layer(axum::middleware::from_fn(track_metrics));
 
     let listener = TcpListener::bind("0.0.0.0:8000").await.unwrap();
     info!("Listening on http://0.0.0.0:8000");

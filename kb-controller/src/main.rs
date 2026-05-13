@@ -1,8 +1,6 @@
 mod config;
-mod db;
-mod error;
 mod handlers;
-mod metrics;
+mod services;
 mod middlewares;
 mod openapi;
 mod schemas;
@@ -13,32 +11,27 @@ use sqlx::postgres::PgPoolOptions;
 use std::sync::Arc;
 use tokio::net::TcpListener;
 use tracing::info;
-use tracing_subscriber::EnvFilter;
 use utoipa::OpenApi;
 use utoipa_swagger_ui::SwaggerUi;
-
 use config::AppEnv;
 use state::KbControllerState;
 
-fn register_process_metrics() {
-    #[cfg(target_os = "linux")]
-    {
-        let process_collector = prometheus::process_collector::ProcessCollector::for_self();
-        prometheus::register(Box::new(process_collector)).ok();
-    }
-}
+use common_infra::{
+    init_tracing, register_process_metrics,
+    track_metrics, common_auth_guard, system_handlers
+};
+use kb_common::repository::KbRepository;
+
+pub const PROJECT_NAME: &str = env!("CARGO_PKG_NAME");
+pub const APP_VERSION: &str = env!("CARGO_PKG_VERSION");
 
 #[tokio::main]
 async fn main() {
-    register_process_metrics();
-
-    tracing_subscriber::fmt()
-        .json()
-        .with_env_filter(EnvFilter::from_default_env().add_directive("info".parse().unwrap()))
-        .init();
+    init_tracing(PROJECT_NAME);
+    let metrics_handle = register_process_metrics();
 
     let env = AppEnv::load();
-    info!("Starting {} v{}", env.project_name, env.app_version);
+    info!("Starting {} v{}", PROJECT_NAME, APP_VERSION);
 
     let pool = PgPoolOptions::new()
         .max_connections(5)
@@ -46,13 +39,15 @@ async fn main() {
         .await
         .expect("Failed to connect to Postgres");
 
-    db::init_db(&pool).await;
+    let repo = KbRepository::new(pool);
+    repo.init_schema().await.expect("Failed to initialize database schema");
+    info!("Database schema initialized successfully");
 
-    let service = Arc::new(KbControllerState::new(env, pool).await);
+    let service = Arc::new(KbControllerState::new(env, repo).await);
 
     let admin_routes = Router::new()
         .route("/createSystem", post(handlers::admin::create_system))
-        .route_layer(middleware::from_fn_with_state(service.clone(), middlewares::admin_auth_guard));
+        .route_layer(middleware::from_fn_with_state(service.clone(), common_auth_guard));
 
     let system_routes  = Router::new()
         .route("/addModuleBase", post(handlers::modules::add_module_base))
@@ -67,13 +62,13 @@ async fn main() {
         .route_layer(middleware::from_fn_with_state(service.clone(), middlewares::system_auth_guard));
 
     let app = Router::new()
-        .route("/health", get(handlers::system::health))
-        .route("/metrics", get(handlers::system::metrics))
-        .nest("/api/v1/admin", admin_routes)
-        .nest("/api/v1", system_routes)
+        .route("/health", get(system_handlers::health))
+        .route("/metrics", get(move || std::future::ready(metrics_handle.render())))
+        .nest("/v1/admin", admin_routes)
+        .nest("/v1", system_routes)
         .merge(SwaggerUi::new("/docs").url("/api-docs/openapi.json", openapi::ApiDoc::openapi()))
         .with_state(service)
-        .layer(middleware::from_fn(middlewares::track_metrics));
+        .layer(middleware::from_fn(track_metrics));
 
     let listener = TcpListener::bind("0.0.0.0:8000").await.unwrap();
     info!("Listening on http://0.0.0.0:8000");

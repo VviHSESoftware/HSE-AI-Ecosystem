@@ -18,8 +18,6 @@ services:
     env_file: ./tg-controller/.env
     environment:
       - WEB_CONCURRENCY=1
-    depends_on:
-      - ai-router
     networks:
       - hse_ai_ecosystem
       - infra_monitoring_net
@@ -35,8 +33,6 @@ services:
     environment:
       - WEB_CONCURRENCY=2
     env_file: ./alice-controller/.env
-    depends_on:
-      - ai-router
     networks:
       - hse_ai_ecosystem
       - infra_monitoring_net
@@ -52,8 +48,6 @@ services:
     env_file: ./vk-controller/.env
     environment:
       - WEB_CONCURRENCY=1
-    depends_on:
-      - ai-router
     networks:
       - hse_ai_ecosystem
       - infra_monitoring_net

@@ -1,0 +1,43 @@
+[package]
+name = "hse-task-processor"
+version = "1.0.0"
+edition = "2024"
+
+[dependencies]
+# Web & Async
+async-trait = { workspace = true }
+axum = { workspace = true }
+graphile_worker = { workspace = true }
+reqwest = { workspace = true }
+tokio = { workspace = true }
+
+
+# Serialization
+serde = { workspace = true }
+serde_json = { workspace = true }
+dotenvy = { workspace = true }
+
+# Database
+sqlx = { workspace = true }
+sea-query = { workspace = true }
+sea-query-binder = { workspace = true }
+
+# Logging & Metrics
+tracing = { workspace = true }
+tracing-subscriber = { workspace = true }
+metrics = { workspace = true }
+metrics-exporter-prometheus = { workspace = true }
+
+# OpenAPI
+utoipa = { workspace = true }
+utoipa-swagger-ui = { workspace = true }
+
+# Utils
+regex = { workspace = true }
+uuid = { workspace = true }
+thiserror = { workspace = true }
+chrono = { workspace = true }
+
+# Internal
+ai-gateway-client = { workspace = true }
+common-infra = { workspace = true }

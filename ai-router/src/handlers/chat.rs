@@ -1,6 +1,7 @@
 use axum::{extract::State, Json};
 use std::sync::Arc;
-use crate::{schemas::*, state::RouterState, engine, error::AppError};
+use common_infra::AppError;
+use crate::{schemas::*, state::RouterState, engine};
 
 #[utoipa::path(
     post,

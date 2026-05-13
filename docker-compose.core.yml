@@ -9,8 +9,8 @@ networks:
 services:
   ai-gateway:
     build:
-      context: ./ai-gateway
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: ai-gateway/Dockerfile
     container_name: hse-ai-gateway
     restart: always
     ports:
@@ -29,8 +29,8 @@ services:
 
   ai-router:
     build:
-      context: ./ai-router
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: ai-router/Dockerfile
     container_name: hse-ai-router
     restart: always
     ports:
@@ -42,8 +42,8 @@ services:
 
   kb-interface:
     build:
-      context: ./kb-interface
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: kb-interface/Dockerfile
     container_name: hse-kb-interface
     restart: always
     ports:
@@ -55,8 +55,8 @@ services:
 
   kb-controller:
     build:
-      context: ./kb-controller
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: kb-controller/Dockerfile
     container_name: hse-kb-controller
     restart: always
     ports:
@@ -68,8 +68,8 @@ services:
 
   data-extractor:
     build:
-      context: ./data-extractor
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: data-extractor/Dockerfile
     container_name: hse-data-extractor
     restart: always
     ports:
@@ -82,8 +82,8 @@ services:
 
   document-processor:
     build:
-      context: ./doc-processor
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: doc-processor/Dockerfile
     ports:
       - "8095:8000"
     container_name: hse-document-processor
@@ -93,3 +93,22 @@ services:
       - ai-gateway
     networks:
       - hse_ai_ecosystem
+
+  task-processor:
+    build:
+      context: .
+      dockerfile: ai-task-processor/Dockerfile
+    container_name: hse-task-processor
+    restart: always
+    ports:
+      - "8099:8000"
+    env_file:
+      - ai-task-processor/.env
+    networks:
+      - hse_ai_ecosystem
+      - infra_monitoring_net
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3

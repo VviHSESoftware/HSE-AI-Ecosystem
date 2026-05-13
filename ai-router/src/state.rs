@@ -1,11 +1,19 @@
+use std::collections::HashSet;
 use crate::{config::AppEnv, schemas::*};
 use reqwest::Client;
 use serde_json::{json, Value};
 use regex::Regex;
+use common_infra::HasApiTokens;
 
 pub struct RouterState {
     pub env: AppEnv,
     pub client: Client,
+}
+
+impl HasApiTokens for RouterState {
+    fn get_api_tokens(&self) -> &HashSet<String> {
+        &self.env.api_tokens
+    }
 }
 
 impl RouterState {
@@ -44,7 +52,7 @@ impl RouterState {
     }
 
     pub async fn get_kb_structure(&self, email: &str) -> Result<Value, String> {
-        let res = self.client.post(format!("{}/api/v1/availableStructure", self.env.kb_interface_url))
+        let res = self.client.post(format!("{}/v1/availableStructure", self.env.kb_interface_url))
             .header("Authorization", format!("Bearer {}", self.env.kb_interface_token))
             .json(&json!({ "email": email }))
             .send().await.map_err(|e| e.to_string())?;
@@ -54,7 +62,7 @@ impl RouterState {
     }
 
     pub async fn query_kb(&self, endpoint: &str, payload: Value) -> Result<Vec<KbQueryChunk>, String> {
-        let res = self.client.post(format!("{}/api/v1/{}", self.env.kb_interface_url, endpoint))
+        let res = self.client.post(format!("{}/v1/{}", self.env.kb_interface_url, endpoint))
             .header("Authorization", format!("Bearer {}", self.env.kb_interface_token))
             .json(&payload)
             .send().await.map_err(|e| e.to_string())?;

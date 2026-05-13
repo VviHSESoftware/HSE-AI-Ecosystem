@@ -17,35 +17,53 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+    deploy:
+      resources:
+        limits:
+          memory: 512M
     restart: unless-stopped
 
   keycloak:
-    image: quay.io/keycloak/keycloak:24.0
+    build: .
     container_name: keycloak
+    command:
+      - start
+      - --optimized
     environment:
-      KEYCLOAK_ADMIN: ${KEYCLOAK_ADMIN_USER}
-      KEYCLOAK_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD}
+      # KEYCLOAK_ADMIN: ${KEYCLOAK_ADMIN_USER}
+      # KEYCLOAK_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD}
 
-      KC_DB: postgres
       KC_DB_URL_HOST: postgres
       KC_DB_URL_DATABASE: ${POSTGRES_DB}
       KC_DB_USERNAME: ${POSTGRES_USER}
       KC_DB_PASSWORD: ${POSTGRES_PASSWORD}
+      KC_DB_POOL_MIN_SIZE: 5
+      KC_DB_POOL_MAX_SIZE: 20
 
       KC_HOSTNAME: keycloak.hsecontest.ru
+      KC_HOSTNAME_STRICT: "true"
+      KC_HOSTNAME_STRICT_HTTPS: "true"
       KC_PROXY: edge
-
-    command:
-      - start-dev
-    ports:
-      - "8087:8080"
+      KC_HTTP_ENABLED: "true"
     networks:
       - keycloak-net
+      - router_default
     depends_on:
       postgres:
         condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health/live"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    deploy:
+      resources:
+        limits:
+          memory: 1536M
     restart: unless-stopped
 
 networks:
   keycloak-net:
     driver: bridge
+  router_default:
+    external: true

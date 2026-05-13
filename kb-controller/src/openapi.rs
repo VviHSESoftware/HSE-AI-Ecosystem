@@ -1,10 +1,15 @@
 use utoipa::OpenApi;
 use crate::{schemas::*, handlers::*};
+use common_infra::{system_handlers, openapi::SecurityAddon};
 
 #[derive(OpenApi)]
 #[openapi(
+    info(
+        title = env!("CARGO_PKG_NAME"),
+        version = env!("CARGO_PKG_VERSION"),
+    ),
     paths(
-        system::health, system::metrics,
+        system_handlers::health, system_handlers::metrics,
         modules::add_module_base, modules::add_module_access,
         modules::set_video_type, modules::set_text_type, modules::set_document_type,
         modules::get_module_id, modules::get_system_id, modules::invalidate_module,
@@ -18,19 +23,3 @@ use crate::{schemas::*, handlers::*};
     modifiers(&SecurityAddon)
 )]
 pub struct ApiDoc;
-
-struct SecurityAddon;
-impl utoipa::Modify for SecurityAddon {
-    fn modify(&self, openapi: &mut utoipa::openapi::OpenApi) {
-        if let Some(comp) = openapi.components.as_mut() {
-            comp.add_security_scheme(
-                "bearerAuth",
-                utoipa::openapi::security::SecurityScheme::Http(
-                    utoipa::openapi::security::HttpBuilder::new()
-                        .scheme(utoipa::openapi::security::HttpAuthScheme::Bearer)
-                        .build()
-                )
-            );
-        }
-    }
-}

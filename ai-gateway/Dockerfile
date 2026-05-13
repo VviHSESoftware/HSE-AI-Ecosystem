@@ -1,21 +1,31 @@
-FROM python:3.10-slim
-
+FROM lukemathwalker/cargo-chef:latest-rust-trixie AS planner
 WORKDIR /app
-ENV PYTHONDONTWRITEBYTECODE=1 \
-    PYTHONUNBUFFERED=1 \
-    UV_COMPILE_BYTECODE=1 \
-    UV_LINK_MODE=copy
-
-COPY --from=ghcr.io/astral-sh/uv:latest /uv /bin/uv
-
-COPY pyproject.toml uv.lock ./
-
-RUN uv sync --frozen --no-dev --no-install-project
-
-ENV PATH="/app/.venv/bin:$PATH"
 
 COPY . .
 
-EXPOSE 8000
+RUN cargo chef prepare --recipe-path recipe.json
 
-CMD ["gunicorn", "-c", "gunicorn_conf.py", "app.main:app"]
+FROM lukemathwalker/cargo-chef:latest-rust-trixie AS cacher
+WORKDIR /app
+RUN apt-get update && apt-get install -y musl-tools clang && rm -rf /var/lib/apt/lists/*
+RUN rustup target add x86_64-unknown-linux-musl
+
+COPY --from=planner /app/recipe.json recipe.json
+
+RUN cargo chef cook --release --target x86_64-unknown-linux-musl --recipe-path recipe.json
+
+FROM cacher AS builder
+
+COPY . .
+
+RUN cargo build --release --target x86_64-unknown-linux-musl --bin hse-ai-gateway
+
+FROM scratch
+WORKDIR /app
+
+COPY --from=builder /app/target/x86_64-unknown-linux-musl/release/hse-ai-gateway ./hse-ai-gateway
+COPY ai-gateway/config.json ./ai-gateway/config.json
+COPY --from=builder /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/
+
+EXPOSE 8000
+ENTRYPOINT ["./hse-ai-gateway"]
