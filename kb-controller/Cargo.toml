@@ -23,9 +23,7 @@ hex = { workspace = true }
 sha2 = { workspace = true }
 
 # Metrics & Logging
-prometheus = { workspace = true }
 tracing = { workspace = true }
-tracing-subscriber = { workspace = true }
 
 # OpenAPI
 utoipa = { workspace = true }
@@ -36,4 +34,6 @@ uuid = { workspace = true }
 
 # Internal
 ai-gateway-client = { workspace = true }
+doc-processor-client = { workspace = true }
 common-infra = { workspace = true }
+kb-common = { workspace = true }

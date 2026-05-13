@@ -1,5 +1,5 @@
 [package]
-name = "hse-autocheck-rust"
+name = "hse-task-processor"
 version = "1.0.0"
 edition = "2024"
 
@@ -7,7 +7,7 @@ edition = "2024"
 # Web & Async
 async-trait = { workspace = true }
 axum = { workspace = true }
-fang = { workspace = true }
+graphile_worker = { workspace = true }
 reqwest = { workspace = true }
 tokio = { workspace = true }
 
@@ -19,6 +19,8 @@ dotenvy = { workspace = true }
 
 # Database
 sqlx = { workspace = true }
+sea-query = { workspace = true }
+sea-query-binder = { workspace = true }
 
 # Logging & Metrics
 tracing = { workspace = true }
@@ -31,7 +33,6 @@ utoipa = { workspace = true }
 utoipa-swagger-ui = { workspace = true }
 
 # Utils
-typetag = { workspace = true }
 regex = { workspace = true }
 uuid = { workspace = true }
 thiserror = { workspace = true }

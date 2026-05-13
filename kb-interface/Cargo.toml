@@ -27,3 +27,4 @@ utoipa-swagger-ui = { workspace = true }
 # Internal
 ai-gateway-client = { workspace = true }
 common-infra = { workspace = true }
+kb-common = { workspace = true }
