@@ -6,7 +6,7 @@ use common_infra::AppError;
 
 #[utoipa::path(
     post,
-    path = "/api/v1/semanticQuery",
+    path = "/v1/semanticQuery",
     request_body = SemanticQueryReq,
     responses((status = 200, body = QueryRes)),
     security(("bearerAuth" = []))
@@ -18,7 +18,7 @@ pub async fn semantic_query(State(state): State<Arc<InterfaceState>>, Json(req):
 
 #[utoipa::path(
     post,
-    path = "/api/v1/timedVideoQuery",
+    path = "/v1/timedVideoQuery",
     request_body = TimedVideoQueryReq,
     responses((status = 200, body = QueryRes)),
     security(("bearerAuth" = []))
@@ -30,7 +30,7 @@ pub async fn timed_video_query(State(state): State<Arc<InterfaceState>>, Json(re
 
 #[utoipa::path(
     post,
-    path = "/api/v1/documentPageQuery",
+    path = "/v1/documentPageQuery",
     request_body = DocumentPageQueryReq,
     responses((status = 200, body = QueryRes)),
     security(("bearerAuth" = []))
@@ -42,7 +42,7 @@ pub async fn document_page_query(State(state): State<Arc<InterfaceState>>, Json(
 
 #[utoipa::path(
     post,
-    path = "/api/v1/fullContentQuery",
+    path = "/v1/fullContentQuery",
     request_body = FullContentQueryReq,
     responses((status = 200, body = QueryRes)),
     security(("bearerAuth" = []))
@@ -54,7 +54,7 @@ pub async fn full_content_query(State(state): State<Arc<InterfaceState>>, Json(r
 
 #[utoipa::path(
     post,
-    path = "/api/v1/availableStructure",
+    path = "/v1/availableStructure",
     request_body = AvailableStructureReq,
     responses((status = 200, body = StructureRes)),
     security(("bearerAuth" = []))

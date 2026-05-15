@@ -4,7 +4,7 @@ use tracing::info;
 use crate::{schemas::*, state::AppState};
 use common_infra::AppError;
 
-#[utoipa::path(post, path = "/api/v1/parseVideo", request_body = ParseVideoRequest, responses((status = 200, body = ParseVideoResponse)), security(("bearerAuth" = [])))]
+#[utoipa::path(post, path = "/v1/parseVideo", request_body = ParseVideoRequest, responses((status = 200, body = ParseVideoResponse)), security(("bearerAuth" = [])))]
 pub async fn parse_video(State(state): State<Arc<AppState>>, Json(req): Json<ParseVideoRequest>) -> Result<Json<ParseVideoResponse>, AppError> {
     let result = state.parsing.parse_video(&req.video_url).await?;
     Ok(Json(result))
@@ -12,7 +12,7 @@ pub async fn parse_video(State(state): State<Arc<AppState>>, Json(req): Json<Par
 
 #[utoipa::path(
     post,
-    path = "/api/v1/parseDocument",
+    path = "/v1/parseDocument",
     request_body(content = ParseDocumentUpload, content_type = "multipart/form-data"),
     responses((status = 200, body = ParseDocumentResponse)),
     security(("bearerAuth" = []))
@@ -56,7 +56,7 @@ pub async fn parse_document(
     Ok(Json(result))
 }
 
-#[utoipa::path(get, path = "/api/v1/getSupportedDocumentTypes", responses((status = 200, body = SupportedTypesResponse)), security(("bearerAuth" = [])))]
+#[utoipa::path(get, path = "/v1/getSupportedDocumentTypes", responses((status = 200, body = SupportedTypesResponse)), security(("bearerAuth" = [])))]
 pub async fn get_supported_types() -> Result<Json<SupportedTypesResponse>, AppError> {
     Ok(Json(SupportedTypesResponse {
         types: vec!["docx", "pptx", "doc", "ppt", "pdf", "png", "jpg", "jpeg"].into_iter().map(String::from).collect(),

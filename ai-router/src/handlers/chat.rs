@@ -5,7 +5,7 @@ use crate::{schemas::*, state::RouterState, engine};
 
 #[utoipa::path(
     post,
-    path = "/api/v1/chat",
+    path = "/v1/chat",
     request_body = RouterRequest,
     responses(
         (status = 200, description = "Успешная обработка запроса", body = RouterResponse),
