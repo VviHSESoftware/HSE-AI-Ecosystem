@@ -6,7 +6,7 @@ pub struct ChunkTextRequest {
     pub text: String,
     #[cfg_attr(feature = "openapi", schema(example = 1000))]
     pub max_chunk_size: usize,
-    #[cfg_attr(feature = "openapi", schema(example = 0.1))]
+    #[cfg_attr(feature = "openapi", schema(example = 200))]
     pub overlap: f32,
 }
 
@@ -36,7 +36,7 @@ pub struct ChunkPartitionedTextRequest {
     pub parts: Vec<PartitionPart>,
     #[cfg_attr(feature = "openapi", schema(example = 1000))]
     pub max_chunk_size: usize,
-    #[cfg_attr(feature = "openapi", schema(example = 0.1))]
+    #[cfg_attr(feature = "openapi", schema(example = 200))]
     pub overlap: f32,
 }
 
