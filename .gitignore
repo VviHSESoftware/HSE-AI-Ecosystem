@@ -11,5 +11,6 @@ __pycache__/
 env/
 venv/
 .pytest_cache/
+storage/
 
 metrics/grafana_storage/
