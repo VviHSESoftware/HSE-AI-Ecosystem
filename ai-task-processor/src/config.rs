@@ -6,6 +6,8 @@ pub struct AppEnv {
     pub database_url: String,
     pub ai_gateway_url: String,
     pub ai_gateway_token: String,
+    pub doc_processor_url: String,
+    pub doc_processor_token: String,
     pub prompts_dir: String,
 }
 
@@ -20,6 +22,8 @@ impl AppEnv {
             database_url: std::env::var("DATABASE_URL").expect("DATABASE_URL is required"),
             ai_gateway_url: std::env::var("AI_GATEWAY_URL").expect("AI_GATEWAY_URL is required"),
             ai_gateway_token: std::env::var("AI_GATEWAY_TOKEN").expect("AI_GATEWAY_TOKEN is required"),
+            doc_processor_url: std::env::var("DOC_PROCESSOR_URL").unwrap_or_else(|_| "http://doc-processor:8000".into()),
+            doc_processor_token: std::env::var("DOC_PROCESSOR_TOKEN").unwrap_or_default(),
             prompts_dir: std::env::var("PROMPTS_DIR").unwrap_or_else(|_| "./prompts".into()),
         }
     }

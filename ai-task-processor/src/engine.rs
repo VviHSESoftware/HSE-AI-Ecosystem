@@ -1,4 +1,4 @@
-use crate::schemas::{TaskPayload, AutocheckOutput, CheckMode};
+use crate::schemas::{TaskPayload, AutocheckOutput, CheckMode, Submission};
 use ai_gateway_client::{ChatMessage, LLMRequest};
 use common_infra::AppError;
 use serde_json::json;
@@ -33,6 +33,9 @@ pub trait TaskProcessor: Send + Sync {
     fn build_prompt(&self, payload: &TaskPayload, system_prompt: &str) -> Result<Vec<ChatMessage>, EngineError>;
     fn parse_response(&self, raw: &str) -> Result<serde_json::Value, EngineError>;
     fn log_summary(&self, payload: &TaskPayload) -> String;
+    fn response_format(&self) -> Option<serde_json::Value> {
+        None
+    }
 }
 
 pub struct AutocheckProcessor;
@@ -40,9 +43,23 @@ pub struct AutocheckProcessor;
 impl TaskProcessor for AutocheckProcessor {
     fn build_prompt(&self, payload: &TaskPayload, system_prompt: &str) -> Result<Vec<ChatMessage>, EngineError> {
         if let TaskPayload::Autocheck { task_description, submission, criteria, .. } = payload {
+            let formatted_submission = match submission {
+                Submission::Single(text) => text.clone(),
+                Submission::Files(files) => {
+                    let mut buf = String::new();
+                    for file in files {
+                        buf.push_str(&format!(
+                            "--- File: {} ---\n{}\n\n",
+                            file.filename, file.content
+                        ));
+                    }
+                    buf
+                }
+            };
+
             let user_prompt = format!(
                 "Task description:\n{}\nAssessment criteria:\n{}\nStudent's submission:\n{}",
-                task_description, criteria, submission
+                task_description, criteria, formatted_submission
             );
             Ok(vec![
                 ChatMessage::system(system_prompt.to_string()),
@@ -53,22 +70,42 @@ impl TaskProcessor for AutocheckProcessor {
         }
     }
 
+    fn response_format(&self) -> Option<serde_json::Value> {
+        Some(json!({
+            "type": "json_schema",
+            "json_schema": {
+                "name": "autocheck_output",
+                "strict": true,
+                "schema": {
+                    "type": "object",
+                    "properties": {
+                        "feedback": {
+                            "type": "string",
+                            "description": "Развернутая обратная связь с баллами и пояснениями по каждому критерию"
+                        },
+                        "grade": {
+                            "type": "number",
+                            "description": "Итоговая суммарная оценка студента"
+                        }
+                    },
+                    "required": ["feedback", "grade"],
+                    "additionalProperties": false
+                }
+            }
+        }))
+    }
+
     fn parse_response(&self, response: &str) -> Result<serde_json::Value, EngineError> {
-        let re = regex::Regex::new(r"(?s)<think>.*?</think>").unwrap();
-        let cleaned = re.replace_all(response, "").to_string();
+        let text = if let Some(idx) = response.rfind("</think>") {
+            &response[idx + 8..]
+        } else {
+            response
+        };
 
-        let lines: Vec<&str> = cleaned.lines().map(|l| l.trim()).filter(|l| !l.is_empty()).collect();
-        if lines.is_empty() { return Err(EngineError::ParsingFailed("Empty response".into())); }
+        let output: AutocheckOutput = serde_json::from_str(text.trim())
+            .map_err(|e| EngineError::ParsingFailed(format!("JSON Error: {}. Raw: {}", e, text)))?;
 
-        let last_line = lines.last().unwrap();
-        let re_num = regex::Regex::new(r"-?\d+\.?\d*").unwrap();
-
-        let grade = re_num.find(last_line)
-            .ok_or_else(|| EngineError::ParsingFailed(format!("No grade found: '{}'", last_line)))?
-            .as_str().parse::<f64>().map_err(|_| EngineError::ParsingFailed("Not a number".into()))?;
-
-        let feedback = lines[..lines.len() - 1].join("\n");
-        Ok(json!(AutocheckOutput { grade, feedback }))
+        Ok(json!(output))
     }
 
     fn log_summary(&self, payload: &TaskPayload) -> String {
@@ -93,26 +130,58 @@ impl TaskProcessor for QuizGenProcessor {
         }
     }
 
-    fn parse_response(&self, response: &str) -> Result<serde_json::Value, EngineError> {
-        let re = regex::Regex::new(r"(?s)<think>.*?</think>").unwrap();
-        let mut text = re.replace_all(response, "").to_string();
-
-        if let Some(caps) = regex::Regex::new(r"(?s)```json\s*(.*?)\s*```").unwrap().captures(&text) {
-            text = caps[1].to_string();
-        }
-
-        let first = text.find('{');
-        let last = text.rfind('}');
-
-        if let (Some(start), Some(end)) = (first, last) {
-            if end > start {
-                let parsed: serde_json::Value = serde_json::from_str(&text[start..=end])
-                    .map_err(|e| EngineError::ParsingFailed(format!("JSON Error: {}", e)))?;
-                return Ok(parsed);
+    fn response_format(&self) -> Option<serde_json::Value> {
+        Some(json!({
+            "type": "json_schema",
+            "json_schema": {
+                "name": "quiz_gen_output",
+                "strict": true,
+                "schema": {
+                    "type": "object",
+                    "properties": {
+                        "questions": {
+                            "type": "array",
+                            "description": "Список тестовых вопросов",
+                            "items": {
+                                "type": "object",
+                                "properties": {
+                                    "question": {
+                                        "type": "string",
+                                        "description": "Текст вопроса"
+                                    },
+                                    "answers": {
+                                        "type": "array",
+                                        "description": "Варианты ответа (ровно 4)",
+                                        "items": { "type": "string" }
+                                    },
+                                    "correct_answer": {
+                                        "type": "integer",
+                                        "description": "Индекс правильного ответа в массиве answers (0, 1, 2 или 3)"
+                                    }
+                                },
+                                "required": ["question", "answers", "correct_answer"],
+                                "additionalProperties": false
+                            }
+                        }
+                    },
+                    "required": ["questions"],
+                    "additionalProperties": false
+                }
             }
-        }
+        }))
+    }
 
-        Err(EngineError::ParsingFailed("No JSON structure found".into()))
+    fn parse_response(&self, response: &str) -> Result<serde_json::Value, EngineError> {
+        let text = if let Some(idx) = response.rfind("</think>") {
+            &response[idx + 8..]
+        } else {
+            response
+        };
+
+        let parsed: serde_json::Value = serde_json::from_str(text.trim())
+            .map_err(|e| EngineError::ParsingFailed(format!("JSON Error: {}. Raw: {}", e, text)))?;
+
+        Ok(parsed)
     }
 
     fn log_summary(&self, payload: &TaskPayload) -> String {
@@ -135,7 +204,8 @@ async fn do_ai_work(
         messages,
         mode: mode.to_string(),
         temperature: Some(0.1),
-        max_tokens: None,
+        response_format: processor.response_format(),
+        ..Default::default()
     };
 
     let res = state.ai_gateway.chat_completion(req).await

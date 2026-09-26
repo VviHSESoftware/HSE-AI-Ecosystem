@@ -20,12 +20,25 @@ impl std::fmt::Display for CheckMode {
 }
 
 #[derive(Debug, Deserialize, Serialize, Clone, ToSchema)]
+pub struct FileSubmission {
+    pub filename: String,
+    pub content: String,
+}
+
+#[derive(Debug, Deserialize, Serialize, Clone, ToSchema)]
+#[serde(untagged)]
+pub enum Submission {
+    Single(String),
+    Files(Vec<FileSubmission>),
+}
+
+#[derive(Debug, Deserialize, Serialize, Clone, ToSchema)]
 #[serde(tag = "type", rename_all = "snake_case")]
 pub enum TaskPayload {
     Autocheck {
         task_description: String,
         task_name: String,
-        submission: String,
+        submission: Submission,
         criteria: String,
         email: String,
     },
@@ -103,4 +116,16 @@ pub struct SingleResponse {
     pub task_result: Option<serde_json::Value>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub error: Option<String>,
+}
+
+#[derive(ToSchema)]
+pub struct UploadMultipartForm {
+    pub task_description: String,
+    pub task_name: String,
+    pub r#type: String,
+    pub criteria: String,
+    pub email: String,
+    pub mode: Option<CheckMode>,
+    #[schema(value_type = [String], format = Binary)]
+    pub files: Vec<Vec<u8>>,
 }

@@ -11,8 +11,10 @@ pub mod metrics;
 use axum::{routing::{post, get}, Router, middleware};
 use sqlx::postgres::PgPoolOptions;
 use std::sync::Arc;
+use axum::extract::DefaultBodyLimit;
 use graphile_worker::WorkerOptions;
 use tokio::net::TcpListener;
+use tower_http::cors::{Any, CorsLayer};
 use tracing::{error, info};
 use utoipa::OpenApi;
 use utoipa_swagger_ui::SwaggerUi;
@@ -39,8 +41,13 @@ async fn main() {
 
     let metrics_handle = register_process_metrics();
 
+    let cors = CorsLayer::new()
+        .allow_origin(Any)
+        .allow_methods(Any)
+        .allow_headers(Any);
+
     let pool = PgPoolOptions::new()
-        .max_connections(30)
+        .max_connections(60)
         .connect(&env.database_url)
         .await
         .expect("Failed to connect to Postgres via SQLx");
@@ -57,6 +64,8 @@ async fn main() {
 
     let api_routes = Router::new()
         .route("/submit", post(handlers::process::submit))
+        .route("/submit/multipart", post(handlers::process::submit_multipart))
+        .layer(DefaultBodyLimit::max(500 * 1024 * 1024))
         .route("/results", post(handlers::process::get_results))
         .route("/process", post(handlers::process::process))
         .route("/tasks/{task_name}/students", get(handlers::task_stats::get_submitted_students))
@@ -70,7 +79,8 @@ async fn main() {
         .route("/health", get(system_handlers::health))
         .route("/metrics", get(move || std::future::ready(metrics_handle.render())))
         .merge(SwaggerUi::new("/docs").url("/api-docs/openapi.json", openapi::ApiDoc::openapi()))
-        .with_state(state.clone());
+        .with_state(state.clone())
+        .layer(cors);
 
     let normal_runner = WorkerOptions::default()
         .concurrency(40)

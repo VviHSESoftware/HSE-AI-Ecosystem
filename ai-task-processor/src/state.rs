@@ -5,6 +5,7 @@ use sqlx::PgPool;
 use std::sync::{Arc};
 use graphile_worker::WorkerUtils;
 use ai_gateway_client::{AiGateway, AiGatewayClient};
+use doc_processor_client::{DocProcessor, DocProcessorClient};
 use common_infra::HasApiTokens;
 use crate::repository::AutocheckRepository;
 
@@ -12,6 +13,7 @@ pub struct AppState {
     pub env: AppEnv,
     pub repo: Arc<AutocheckRepository>,
     pub ai_gateway: Arc<dyn AiGateway>,
+    pub doc_processor: Arc<dyn DocProcessor>,
     pub worker_utils: WorkerUtils,
     pub prompts: HashMap<String, String>,
 }
@@ -23,6 +25,7 @@ impl fmt::Debug for AppState {
             .field("repo", &self.repo)
             .field("prompts", &self.prompts)
             .field("ai_gateway", &"Arc<dyn AiGateway>")
+            .field("doc_processor", &"Arc<dyn DocProcessor>")
             .field("worker_utils", &"WorkerUtils")
             .finish()
     }
@@ -43,6 +46,11 @@ impl AppState {
             env.ai_gateway_token.clone(),
         ));
 
+        let doc_processor = Arc::new(DocProcessorClient::new(
+            env.doc_processor_url.clone(),
+            env.doc_processor_token.clone(),
+        ));
+
         let repo = Arc::new(AutocheckRepository::new(db.clone()));
 
         let worker_utils = WorkerUtils::new(db, "graphile_worker".to_string());
@@ -51,6 +59,7 @@ impl AppState {
             env,
             repo,
             ai_gateway,
+            doc_processor,
             worker_utils,
             prompts,
         }

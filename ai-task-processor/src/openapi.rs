@@ -6,13 +6,13 @@ use common_infra::{system_handlers, openapi::SecurityAddon};
 #[openapi(
     paths(
         system_handlers::health, system_handlers::metrics,
-        submit, get_results, process,
+        submit, get_results, process, submit_multipart,
         get_submitted_students, get_failed_students,
         get_submission_text, get_submission_verdict
     ),
     components(schemas(
-        UniversalTaskRequest, TaskPayload, CheckMode,
-        SubmitResponse, ResultsRequest, ResultItem, SingleResponse,
+        UniversalTaskRequest, TaskPayload, CheckMode, FileSubmission, Submission,
+        SubmitResponse, ResultsRequest, ResultItem, SingleResponse, UploadMultipartForm,
         VerdictResponse, SubmissionTextResponse, AutocheckOutput, QuizGenOutput
     )),
     modifiers(&SecurityAddon)
