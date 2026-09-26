@@ -53,6 +53,19 @@ services:
       - hse_ai_ecosystem
       - infra_monitoring_net
 
+  kb-mcp:
+    build:
+      context: .
+      dockerfile: kb-mcp/Dockerfile
+    container_name: hse-kb-mcp
+    restart: always
+    ports:
+      - "8103:8000"
+    env_file: ./kb-mcp/.env
+    networks:
+      - hse_ai_ecosystem
+      - infra_monitoring_net
+
   kb-controller:
     build:
       context: .
@@ -65,20 +78,6 @@ services:
     networks:
       - hse_ai_ecosystem
       - infra_monitoring_net
-
-  data-extractor:
-    build:
-      context: .
-      dockerfile: data-extractor/Dockerfile
-    container_name: hse-data-extractor
-    restart: always
-    ports:
-      - "8098:8000"
-    env_file: ./data-extractor/.env
-    depends_on:
-      - ai-gateway
-    networks:
-      - hse_ai_ecosystem
 
   document-processor:
     build:

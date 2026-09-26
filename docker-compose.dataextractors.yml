@@ -1,0 +1,42 @@
+name: hse-ai-ecosystem-dataextractors
+
+networks:
+  hse_ai_ecosystem:
+    external: true
+  infra_monitoring_net:
+    external: true
+
+services:
+  data-extractor-eduhse:
+    build:
+      context: .
+      dockerfile: data-extractor/Dockerfile
+    container_name: hse-data-extractor-eduhse
+    restart: always
+    ports:
+      - "8098:8000"
+    env_file: ./data-extractor/.eduhseru.env
+    networks:
+      - hse_ai_ecosystem
+
+  data-extractor-learnonline:
+    build:
+      context: .
+      dockerfile: data-extractor/Dockerfile
+    container_name: hse-data-extractor-learnonline
+    restart: always
+    ports:
+      - "8102:8000"
+    env_file: ./data-extractor/.learnonline.env
+    networks:
+      - hse_ai_ecosystem
+
+  web-extractor-olymphse:
+    build:
+      context: .
+      dockerfile: website-extractor/Dockerfile
+    container_name: hse-web-extractor-olymphse
+    restart: always
+    env_file: ./website-extractor/.env
+    networks:
+      - hse_ai_ecosystem

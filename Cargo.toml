@@ -6,9 +6,11 @@ members = [
     "ai-mock-provider",
     "ai-router",
     "data-extractor",
+    "website-extractor",
     "doc-processor",
     "kb-controller",
     "kb-interface",
+    "kb-mcp",
     "libs/ai-gateway-client",
     "libs/common-infra",
     "libs/kb-common",
@@ -23,7 +25,7 @@ graphile_worker = "0.11.4"
 reqwest = { version = "0.12", default-features = false, features = ["json", "multipart", "rustls-tls"] }
 scraper = "0.19"
 tokio = { version = "1.52.1", features = ["full"] }
-tower-http = { version = "0.5", features = ["trace"] }
+tower-http = { version = "0.5", features = ["trace", "cors"] }
 url = "2.5"
 
 # Serialization

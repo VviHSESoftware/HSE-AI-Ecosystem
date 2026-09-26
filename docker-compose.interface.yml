@@ -18,6 +18,7 @@ services:
     env_file: ./tg-controller/.env
     environment:
       - WEB_CONCURRENCY=1
+      - TZ=Europe/Moscow
     networks:
       - hse_ai_ecosystem
       - infra_monitoring_net
@@ -48,6 +49,7 @@ services:
     env_file: ./vk-controller/.env
     environment:
       - WEB_CONCURRENCY=1
+      - TZ=Europe/Moscow
     networks:
       - hse_ai_ecosystem
       - infra_monitoring_net
