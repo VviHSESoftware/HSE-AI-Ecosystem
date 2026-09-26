@@ -1,0 +1,21 @@
+[package]
+name = "hse-kb-mcp"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+# Web & Async
+axum = { workspace = true }
+reqwest = { workspace = true }
+tokio = { workspace = true, features = ["full"] }
+tokio-stream = "0.1"
+
+# Serialization
+serde = { workspace = true }
+serde_json = { workspace = true }
+dotenvy = { workspace = true }
+schemars = "0.8"
+
+# Logging
+tracing = { workspace = true }
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
