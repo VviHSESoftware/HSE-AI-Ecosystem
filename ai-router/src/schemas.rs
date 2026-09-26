@@ -1,12 +1,6 @@
 use serde::{Deserialize, Serialize};
 use utoipa::ToSchema;
-
-#[derive(Debug, Deserialize, Serialize, Clone, ToSchema)]
-pub struct ChatMessage {
-    pub role: String,
-    pub content: String,
-}
-
+pub use ai_gateway_client::{ChatMessage, LLMRequest};
 #[derive(Debug, Deserialize, ToSchema)]
 pub struct RouterRequest {
     pub messages: Vec<ChatMessage>,

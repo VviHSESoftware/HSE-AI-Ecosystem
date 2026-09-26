@@ -1,13 +1,18 @@
 use std::collections::HashSet;
+use std::fmt;
+use std::sync::Arc;
 use crate::{config::AppEnv, schemas::*};
 use reqwest::Client;
 use serde_json::{json, Value};
 use regex::Regex;
+use tracing::info;
 use common_infra::HasApiTokens;
+use ai_gateway_client::{AiGateway, AiGatewayClient, LLMRequest};
 
 pub struct RouterState {
     pub env: AppEnv,
     pub client: Client,
+    pub ai_gateway: Arc<dyn AiGateway>,
 }
 
 impl HasApiTokens for RouterState {
@@ -18,11 +23,22 @@ impl HasApiTokens for RouterState {
 
 impl RouterState {
     pub fn new(env: AppEnv) -> Self {
-        Self { env, client: Client::builder().timeout(std::time::Duration::from_secs(60)).build().unwrap() }
+        let ai_gateway = Arc::new(AiGatewayClient::new(
+            env.ai_gateway_url.clone(),
+            env.ai_gateway_token.clone(),
+        ));
+
+        let client = Client::builder()
+            .timeout(std::time::Duration::from_secs(60))
+            .build()
+            .unwrap();
+
+        Self { env, client, ai_gateway }
     }
 
     pub fn extract_json_from_llm(&self, raw: &str) -> Result<Value, String> {
-        let re = Regex::new(r"```(?:json)?\s*(\{.*?\})\s*```").unwrap();
+        info!("Raw res for parsing: {}", raw);
+        let re = Regex::new(r"(?s)```(?:json)?\s*(\{.*?\})\s*```").unwrap();
         let clean_str = if let Some(caps) = re.captures(raw) {
             caps.get(1).unwrap().as_str()
         } else {
@@ -32,23 +48,23 @@ impl RouterState {
         serde_json::from_str(clean_str).map_err(|e| format!("Failed to parse LLM JSON: {}. Raw: {}", e, raw))
     }
 
-    pub async fn call_llm(&self, messages: Vec<ChatMessage>, mode: &str, temperature: f32) -> Result<String, String> {
-        let payload = json!({ "messages": messages, "mode": mode, "temperature": temperature });
+    pub async fn call_llm(
+        &self,
+        messages: Vec<ChatMessage>,
+        mode: &str,
+        temperature: f32,
+    ) -> Result<String, String> {
+        let req = LLMRequest {
+            messages,
+            mode: mode.to_string(),
+            temperature: Some(temperature),
+            ..Default::default()
+        };
 
-        let res = self.client.post(format!("{}/v1/llm", self.env.ai_gateway_url))
-            .header("Authorization", format!("Bearer {}", self.env.ai_gateway_token))
-            .json(&payload)
-            .send().await.map_err(|e| e.to_string())?;
+        let res = self.ai_gateway.chat_completion(req).await
+            .map_err(|e| format!("Gateway error: {}", e))?;
 
-        if !res.status().is_success() {
-            return Err(format!("Gateway Error: {}", res.text().await.unwrap_or_default()));
-        }
-
-        let data: Value = res.json().await.map_err(|e| e.to_string())?;
-        data.pointer("/content")
-            .and_then(|v| v.as_str())
-            .map(|s| s.to_string())
-            .ok_or_else(|| "Missing content in LLM response".to_string())
+        Ok(res.content)
     }
 
     pub async fn get_kb_structure(&self, email: &str) -> Result<Value, String> {
