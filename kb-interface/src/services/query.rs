@@ -25,11 +25,15 @@ impl QueryService {
     }
 
     pub async fn get_user_allowed_roots(&self, email: &str) -> Result<Vec<i32>, AppError> {
+        if let Some(fake_roots) = self.env.fake_users.get(email.trim()) {
+            return Ok(fake_roots.clone());
+        }
+
         self.repo.get_user_allowed_roots(email).await.map_err(|e| AppError::Internal(e.to_string()))
     }
 
     async fn get_embedding(&self, text: &str) -> Result<Vec<f32>, AppError> {
-        let res = self.ai_gateway.create_embeddings(text.to_string()).await
+        let res = self.ai_gateway.create_embeddings(text.to_string(), "query".to_string()).await
             .map_err(|e| AppError::Internal(e.to_string()))?;
 
         res.embeddings.first()
@@ -92,10 +96,16 @@ impl QueryService {
                 let score = hit["score"].as_f64().unwrap_or(0.0);
                 tracing::info!("Found chunk with score: {}", score);
                 let p = &hit["payload"];
+                let module_url = self.repo.get_module_url(
+                    p["module_id"]
+                    .as_i64()
+                    .and_then(|val| val.try_into().ok())
+                    .unwrap_or_default()
+                ).await.map_err(|e| AppError::Internal(e.to_string()))?.unwrap_or_default();
                 chunks.push(QueryChunk {
                     desc: p["description"].as_str().unwrap_or_default().to_string(),
                     text: p["text"].as_str().unwrap_or_default().to_string(),
-                    url: p["url"].as_str().unwrap_or_default().to_string()
+                    url: module_url
                 });
             }
         }
@@ -239,9 +249,50 @@ impl QueryService {
             }
         }
 
-        let mut result_roots: Vec<ModuleNode> = nodes.into_values().collect();
-        result_roots.sort_by_key(|n| n.id);
+        let result_roots: Vec<ModuleNode> = nodes.into_values().collect();
 
-        Ok(StructureRes { modules: result_roots })
+        let mut transformed_roots = Vec::new();
+        for root in result_roots {
+            if let Some(processed) = Self::post_process_node(root) {
+                transformed_roots.push(processed);
+            }
+        }
+
+        transformed_roots.sort_by_key(|n| n.id);
+
+        Ok(StructureRes { modules: transformed_roots })
+    }
+
+    fn post_process_node(mut node: ModuleNode) -> Option<ModuleNode> {
+        let mut processed_subs = Vec::new();
+        for sub in node.sub_modules {
+            if let Some(processed) = Self::post_process_node(sub) {
+                processed_subs.push(processed);
+            }
+        }
+        node.sub_modules = processed_subs;
+
+        if node.sub_modules.is_empty() && node.r#type == "Base" {
+            return None;
+        }
+
+        if node.sub_modules.len() == 1 {
+            let child = &node.sub_modules[0];
+            if child.sub_modules.is_empty() {
+                if child.r#type == "Video" {
+                    let mut compacted = node.sub_modules.remove(0);
+                    compacted.name = node.name;
+                    return Some(compacted);
+                } else if child.r#type == "File" {
+                    let mut compacted = node.sub_modules.remove(0);
+                    compacted.name = format!("{} ; {}", node.name, compacted.name);
+                    return Some(compacted);
+                }
+            }
+        }
+
+        node.sub_modules.sort_by_key(|sub| sub.id);
+
+        Some(node)
     }
 }
