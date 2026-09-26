@@ -1,15 +1,17 @@
-use async_trait::async_trait;
-use reqwest::{header, Client, multipart};
-use serde::Deserialize;
-use common_infra::AppError;
 use crate::types::*;
+use async_trait::async_trait;
+use common_infra::AppError;
+use reqwest::{header, multipart, Client};
 
 #[async_trait]
 pub trait DocProcessor: Send + Sync {
     async fn chunk_text(&self, req: ChunkTextRequest) -> Result<ChunkTextResponse, AppError>;
     async fn chunk_partitioned(&self, req: ChunkPartitionedTextRequest) -> Result<ChunkPartitionedTextResponse, AppError>;
     async fn parse_video(&self, video_url: &str) -> Result<ParseVideoResponse, AppError>;
+    async fn parse_video_file(&self, filename: &str, file_bytes: Vec<u8>) -> Result<ParseVideoResponse, AppError>;
+    async fn parse_audio_file(&self, filename: &str, file_bytes: Vec<u8>) -> Result<ParseVideoResponse, AppError>;
     async fn parse_document(&self, filename: &str, file_bytes: Vec<u8>) -> Result<ParseDocumentResponse, AppError>;
+    async fn parse_file(&self, filename: &str, file_bytes: Vec<u8>) -> Result<ParseFileResponse, AppError>;
     async fn get_supported_types(&self) -> Result<SupportedTypesResponse, AppError>;
 }
 
@@ -52,21 +54,39 @@ impl DocProcessorClient {
 #[async_trait]
 impl DocProcessor for DocProcessorClient {
     async fn chunk_text(&self, req: ChunkTextRequest) -> Result<ChunkTextResponse, AppError> {
-        let res = self.client.post(format!("{}/api/v1/chunkText", self.base_url))
+        let res = self.client.post(format!("{}/v1/chunkText", self.base_url))
             .json(&req).send().await?;
         self.handle_res(res).await
     }
 
     async fn chunk_partitioned(&self, req: ChunkPartitionedTextRequest) -> Result<ChunkPartitionedTextResponse, AppError> {
-        let res = self.client.post(format!("{}/api/v1/chunkPartitionedText", self.base_url))
+        let res = self.client.post(format!("{}/v1/chunkPartitionedText", self.base_url))
             .json(&req).send().await?;
         self.handle_res(res).await
     }
 
     async fn parse_video(&self, video_url: &str) -> Result<ParseVideoResponse, AppError> {
-        let res = self.client.post(format!("{}/api/v1/parseVideo", self.base_url))
+        let res = self.client.post(format!("{}/v1/parseVideo", self.base_url))
             .json(&serde_json::json!({ "video_url": video_url }))
             .send().await?;
+        self.handle_res(res).await
+    }
+
+    async fn parse_video_file(&self, filename: &str, file_bytes: Vec<u8>) -> Result<ParseVideoResponse, AppError> {
+        let part = multipart::Part::bytes(file_bytes).file_name(filename.to_string());
+        let form = multipart::Form::new().part("file", part);
+
+        let res = self.client.post(format!("{}/v1/parseVideoFile", self.base_url))
+            .multipart(form).send().await?;
+        self.handle_res(res).await
+    }
+
+    async fn parse_audio_file(&self, filename: &str, file_bytes: Vec<u8>) -> Result<ParseVideoResponse, AppError> {
+        let part = multipart::Part::bytes(file_bytes).file_name(filename.to_string());
+        let form = multipart::Form::new().part("file", part);
+
+        let res = self.client.post(format!("{}/v1/parseAudioFile", self.base_url))
+            .multipart(form).send().await?;
         self.handle_res(res).await
     }
 
@@ -74,13 +94,22 @@ impl DocProcessor for DocProcessorClient {
         let part = multipart::Part::bytes(file_bytes).file_name(filename.to_string());
         let form = multipart::Form::new().part("file", part);
 
-        let res = self.client.post(format!("{}/api/v1/parseDocument", self.base_url))
+        let res = self.client.post(format!("{}/v1/parseDocument", self.base_url))
+            .multipart(form).send().await?;
+        self.handle_res(res).await
+    }
+
+    async fn parse_file(&self, filename: &str, file_bytes: Vec<u8>) -> Result<ParseFileResponse, AppError> {
+        let part = multipart::Part::bytes(file_bytes).file_name(filename.to_string());
+        let form = multipart::Form::new().part("file", part);
+
+        let res = self.client.post(format!("{}/v1/parse", self.base_url))
             .multipart(form).send().await?;
         self.handle_res(res).await
     }
 
     async fn get_supported_types(&self) -> Result<SupportedTypesResponse, AppError> {
-        let res = self.client.get(format!("{}/api/v1/getSupportedDocumentTypes", self.base_url))
+        let res = self.client.get(format!("{}/v1/getSupportedDocumentTypes", self.base_url))
             .send().await?;
 
         Ok(self.handle_res(res).await?)

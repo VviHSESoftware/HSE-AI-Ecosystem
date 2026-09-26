@@ -63,6 +63,7 @@ pub struct ModuleNode {
     pub page_count: Option<i32>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub video_length: Option<f64>,
+    #[schema(no_recursion)]
     pub sub_modules: Vec<ModuleNode>,
 }
 

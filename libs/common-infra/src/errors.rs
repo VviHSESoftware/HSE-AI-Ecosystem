@@ -67,24 +67,28 @@ impl From<reqwest::Error> for AppError {
 
 impl From<serde_json::Error> for AppError {
     fn from(err: serde_json::Error) -> Self {
+        tracing::error!("Json error: {:?}", err);
         AppError::Internal(format!("JSON error: {}", err))
     }
 }
 
 impl From<bincode::Error> for AppError {
     fn from(err: bincode::Error) -> Self {
+        tracing::error!("Bincode error: {:?}", err);
         AppError::Internal(format!("Serialization error: {}", err))
     }
 }
 
 impl From<String> for AppError {
     fn from(err: String) -> Self {
+        tracing::error!("{}", err);
         AppError::Internal(err)
     }
 }
 
 impl From<&str> for AppError {
     fn from(err: &str) -> Self {
+        tracing::error!("{}", err);
         AppError::Internal(err.to_string())
     }
 }

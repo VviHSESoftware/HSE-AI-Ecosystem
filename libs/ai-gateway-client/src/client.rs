@@ -21,7 +21,7 @@ pub enum ClientError {
 #[async_trait]
 pub trait AiGateway: Send + Sync {
     async fn chat_completion(&self, req: LLMRequest) -> Result<LLMResponse, ClientError>;
-    async fn create_embeddings(&self, text: String) -> Result<EmbeddingResponse, ClientError>;
+    async fn create_embeddings(&self, text: String, mode: String) -> Result<EmbeddingResponse, ClientError>;
     async fn vlm_analyze(&self, req: VLMRequest) -> Result<LLMResponse, ClientError>;
     async fn transcribe_audio(&self, filename: String, data: Vec<u8>) -> Result<serde_json::Value, ClientError>;
 }
@@ -62,9 +62,9 @@ impl AiGateway for AiGatewayClient {
     }
 
     /// Embedding generation
-    async fn create_embeddings(&self, text: String) -> Result<EmbeddingResponse, ClientError> {
+    async fn create_embeddings(&self, text: String, mode: String) -> Result<EmbeddingResponse, ClientError> {
         let url = format!("{}/v1/embeddings", self.base_url);
-        let req = EmbeddingRequest { input: text.into() };
+        let req = EmbeddingRequest { input: text.into(), mode: mode.into()};
         self.post_json(url, req).await
     }
 

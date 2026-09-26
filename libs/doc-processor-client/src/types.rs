@@ -94,3 +94,25 @@ pub struct ParseDocumentResponse {
 pub struct SupportedTypesResponse {
     pub types: Vec<String>,
 }
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+#[cfg_attr(feature = "openapi", derive(utoipa::ToSchema))]
+pub struct ParseVideoFileUpload {
+    #[cfg_attr(feature = "openapi", schema(format = Binary))]
+    pub file: String,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+#[cfg_attr(feature = "openapi", derive(utoipa::ToSchema))]
+pub struct ParseAudioFileUpload {
+    #[cfg_attr(feature = "openapi", schema(format = Binary))]
+    pub file: String,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+#[cfg_attr(feature = "openapi", derive(utoipa::ToSchema))]
+#[serde(untagged)]
+pub enum ParseFileResponse {
+    Document(ParseDocumentResponse),
+    Media(ParseVideoResponse),
+}
