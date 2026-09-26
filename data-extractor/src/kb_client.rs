@@ -94,4 +94,21 @@ impl KbClient {
         if !res.status().is_success() { return Err(res.text().await.unwrap_or_default()); }
         Ok(())
     }
+
+    pub async fn set_video_file_type(&self, module_id: i32, filename: &str, bytes: Vec<u8>) -> Result<(), String> {
+        let url = format!("{}/setVideoFileType", self.env.kb_url.trim_end_matches('/'));
+        let part = multipart::Part::bytes(bytes).file_name(filename.to_string());
+
+        let form = multipart::Form::new()
+            .text("module_id", module_id.to_string())
+            .part("file", part);
+
+        let res = self.client.post(&url)
+            .header("Authorization", format!("Bearer {}", self.env.kb_system_token))
+            .multipart(form)
+            .send().await.map_err(|e| e.to_string())?;
+
+        if !res.status().is_success() { return Err(res.text().await.unwrap_or_default()); }
+        Ok(())
+    }
 }

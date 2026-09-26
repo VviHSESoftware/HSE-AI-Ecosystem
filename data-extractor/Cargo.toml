@@ -18,3 +18,7 @@ serde_json = { workspace = true }
 # Metrics & Logging
 tracing = { workspace = true }
 tracing-subscriber = { workspace = true }
+
+# OpenAPI
+utoipa = { workspace = true }
+utoipa-swagger-ui = { workspace = true }
