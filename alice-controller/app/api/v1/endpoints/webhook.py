@@ -71,7 +71,7 @@ async def handle_alice_webhook(req: AliceRequest):
 
         except Exception as e:
             logger.error(f"Alice Error: {e}", exc_info=True)
-            return _build_response("Произошла ошибка в магии Вышки. Попробуйте позже.")
+            return _build_response("К сожалению, мне не удалось найти ответ на этот вопрос в базе знаний. Попробуйте задать другой вопрос.")
 
 
 def _build_response(text: str, buttons: list = None, end_session: bool = False) -> AliceResponse:
