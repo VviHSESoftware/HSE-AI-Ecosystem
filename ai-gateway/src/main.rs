@@ -7,6 +7,7 @@ mod state;
 
 use axum::{routing::{get, post}, Router, middleware};
 use std::sync::Arc;
+use axum::extract::DefaultBodyLimit;
 use tokio::net::TcpListener;
 use tracing::info;
 use utoipa::OpenApi;
@@ -45,9 +46,12 @@ async fn main() {
 
     let auth_routes = Router::new()
         .route("/llm", post(handlers::generation::llm))
+        .route("/chat/completions", post(handlers::openai::openai_chat))
+        .route("/models", get(handlers::openai::list_models))
         .route("/vlm", post(handlers::generation::vlm))
         .route("/embeddings", post(handlers::generation::embeddings))
         .route("/asr", post(handlers::audio::asr))
+        .layer(DefaultBodyLimit::max(100 * 1024 * 1024))
         .route("/admin/config/reload", post(handlers::admin::reload))
         .route("/admin/status/models", get(handlers::admin::status))
         .route_layer(middleware::from_fn_with_state(service.clone(), common_auth_guard));

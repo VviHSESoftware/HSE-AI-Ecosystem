@@ -11,6 +11,7 @@ use common_infra::{system_handlers, openapi::SecurityAddon};
     paths(
         system_handlers::health, system_handlers::metrics,
         generation::llm, generation::vlm, generation::embeddings,
+        openai::openai_chat, openai::list_models,
         audio::asr,
         admin::reload, admin::status
     ),

@@ -18,6 +18,6 @@ pub async fn vlm(State(state): State<Arc<GatewayService>>, Json(req): Json<VLMRe
 
 #[utoipa::path(post, path = "/v1/embeddings", request_body = EmbeddingRequest, responses((status = 200, body = EmbeddingResponse)), security(("bearerAuth" = [])))]
 pub async fn embeddings(State(state): State<Arc<GatewayService>>, Json(req): Json<EmbeddingRequest>) -> Result<Json<EmbeddingResponse>, AppError> {
-    let response = state.create_embeddings(req.input).await?;
+    let response = state.create_embeddings(req).await?;
     Ok(Json(response))
 }

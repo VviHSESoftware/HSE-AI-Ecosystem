@@ -7,7 +7,7 @@ use std::sync::Arc;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 use tokio::sync::RwLock;
 use tracing::{error, info};
-use ai_gateway_client::{EmbeddingResponse, LLMResponse};
+use ai_gateway_client::{EmbeddingRequest, EmbeddingResponse, LLMResponse};
 use common_infra::HasApiTokens;
 
 pub struct GatewayState {
@@ -60,16 +60,22 @@ impl GatewayService {
         info!("Config updated. Active providers loaded.");
     }
 
-    async fn get_model_and_client(&self, mode: &str) -> Result<(ModelSettings, Client, String), String> {
+    pub async fn get_model_and_client(&self, mode_or_model: &str) -> Result<(ModelSettings, Client, String), String> {
         let guard = self.state.read().await;
         let state = guard.as_ref().ok_or("Config not loaded")?;
 
-        let model_name = state.config.routing.get(mode).unwrap_or(&mode.to_string()).clone();
-        let m_settings = state.config.models.iter().find(|m| m.name == model_name)
-            .ok_or_else(|| format!("Model settings for '{}' not found", model_name))?.clone();
+        let model_name = state.config.routing.get(mode_or_model)
+            .map(|s| s.as_str())
+            .unwrap_or(mode_or_model);
+
+        let m_settings = state.config.models.iter()
+            .find(|m| m.name == model_name)
+            .ok_or_else(|| format!("Unknown mode or model '{}'", mode_or_model))?
+            .clone();
 
         let client = state.clients.get(&m_settings.provider_id)
-            .ok_or_else(|| format!("Client for '{}' not init", m_settings.provider_id))?.clone();
+            .ok_or_else(|| format!("Client for provider '{}' not initialized", m_settings.provider_id))?
+            .clone();
 
         let base_url = state.config.providers.iter()
             .find(|p| p.id == m_settings.provider_id)
@@ -84,6 +90,7 @@ impl GatewayService {
         form: Option<reqwest::multipart::Form>, m_settings: &ModelSettings, mode: &str
     ) -> Result<serde_json::Value, String> {
         let start = std::time::Instant::now();
+        info!(%mode, %url, "Request started");
 
         let mut req = client.post(&url);
         if let Some(json) = payload { req = req.json(&json); }
@@ -91,6 +98,7 @@ impl GatewayService {
 
         let res = req.send().await;
         let duration = start.elapsed().as_secs_f64();
+        info!(%mode, %url, "Request ended {}", duration);
         metrics::histogram!(
             "ai_request_duration_seconds",
             "model" => m_settings.remote_model_id.clone(),
@@ -282,8 +290,8 @@ impl GatewayService {
         Err(format!("Could not extract message content from provider response. Raw: {}", raw))
     }
 
-    pub async fn chat_completion(&self, mut payload: serde_json::Value, mode: &str) -> Result<LLMResponse, String> {
-        let (m_settings, client, base_url) = self.get_model_and_client(mode).await?;
+    pub async fn chat_completion(&self, mut payload: serde_json::Value, mode_or_model: &str) -> Result<LLMResponse, String> {
+        let (m_settings, client, base_url) = self.get_model_and_client(mode_or_model).await?;
 
         if let Some(obj) = payload.as_object_mut() {
             obj.remove("mode");
@@ -305,6 +313,34 @@ impl GatewayService {
                 req_body["max_output_tokens"] = json!(max);
             }
 
+            if let Some(rf) = payload.get("response_format") {
+                if let Some(rf_type) = rf.get("type").and_then(|v| v.as_str()) {
+                    match rf_type {
+                        "json_object" => {
+                            req_body["text"] = json!({
+                        "format": {
+                            "type": "json_object"
+                        }
+                    });
+                        }
+                        "json_schema" => {
+                            if let Some(js) = rf.get("json_schema") {
+                                let mut format_obj = js.clone();
+                                format_obj["type"] = json!("json_schema");
+                                req_body["text"] = json!({
+                            "format": format_obj
+                        });
+                            } else {
+                                req_body["text"] = json!({
+                            "format": rf
+                        });
+                            }
+                        }
+                        _ => {}
+                    }
+                }
+            }
+
             format!("{}/responses", base_url)
         }else{
             if let Some(max) = m_settings.max_tokens { req_body["max_tokens"] = json!(max); }
@@ -316,16 +352,26 @@ impl GatewayService {
             format!("{}/chat/completions", base_url)
         };
 
-        let raw = self.safe_request(client, url, Some(req_body), None, &m_settings, mode).await?;
+        let raw = self.safe_request(client, url, Some(req_body), None, &m_settings, mode_or_model).await?;
 
         self.parse_llm_response(raw)
     }
 
-    pub async fn create_embeddings(&self, input: String) -> Result<EmbeddingResponse, String> {
+    pub async fn create_embeddings(&self, req: EmbeddingRequest) -> Result<EmbeddingResponse, String> {
         let (m_settings, client, base_url) = self.get_model_and_client("embeddings").await?;
         let mut req_body = m_settings.extra_payload.clone();
-        req_body["model"] = json!(m_settings.remote_model_id);
-        req_body["input"] = json!(input);
+
+        let model_id = if m_settings.provider_id == "jina" {
+            m_settings.remote_model_id.strip_prefix("jina-ai/").unwrap_or(&m_settings.remote_model_id)
+        } else {
+            m_settings.remote_model_id.as_str()
+        };
+
+        req_body["model"] = json!(model_id);
+        req_body["input"] = json!(req.input);
+        if m_settings.provider_id == "jina" {
+            req_body["task"] = json!("retrieval.".to_owned()+req.mode.as_str());
+        }
         let raw = self.safe_request(client, format!("{}/embeddings", base_url), Some(req_body), None, &m_settings, "embeddings").await?;
 
         let mut embeddings = vec![];
