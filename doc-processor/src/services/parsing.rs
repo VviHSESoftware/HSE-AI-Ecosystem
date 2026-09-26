@@ -12,6 +12,23 @@ use tracing::log::warn;
 use url::Url;
 use common_infra::AppError;
 use doc_processor_client::{DocumentPagePart, ParseDocumentResponse, ParseVideoResponse, PartitionPart};
+use crate::schemas::IpynbNotebook;
+
+impl crate::schemas::IpynbSource {
+    fn into_lines(self) -> Vec<String> {
+        match self {
+            crate::schemas::IpynbSource::Array(lines) => lines,
+            crate::schemas::IpynbSource::String(s) => vec![s],
+        }
+    }
+
+    fn to_joined_string(&self) -> String {
+        match self {
+            crate::schemas::IpynbSource::Array(lines) => lines.join(""),
+            crate::schemas::IpynbSource::String(s) => s.clone(),
+        }
+    }
+}
 
 pub struct ParsingService {
     env: AppEnv,
@@ -28,6 +45,81 @@ impl ParsingService {
             ai_gateway,
             semaphore: Semaphore::new(5),
         }
+    }
+
+    #[tracing::instrument(skip(self, file_bytes))]
+    pub async fn process_ipynb(&self, file_bytes: Vec<u8>) -> Result<ParseDocumentResponse, AppError> {
+        let raw_json = String::from_utf8_lossy(&file_bytes).to_string();
+        let notebook: Result<IpynbNotebook, _> = serde_json::from_slice(&file_bytes);
+
+        let mut extracted_code = String::new();
+        let mut parts = Vec::new();
+
+        if let Ok(nb) = notebook {
+            if let Some(cells) = nb.cells {
+                for cell in cells {
+                    let mut cell_text = String::new();
+
+                    if cell.cell_type == "code" {
+                        if let Some(source) = cell.source {
+                            let content = source.to_joined_string();
+                            let trimmed = content.trim();
+                            if !trimmed.is_empty() {
+                                cell_text = format!("```python\n{}\n```", trimmed);
+                            }
+                        }
+                    } else if cell.cell_type == "markdown" {
+                        if let Some(source) = cell.source {
+                            let lines = source.into_lines();
+                            let filtered: Vec<String> = lines
+                                .into_iter()
+                                .filter(|line| !line.trim_start().starts_with("!["))
+                                .collect();
+
+                            if !filtered.is_empty() {
+                                let content = filtered.join("");
+                                let trimmed = content.trim();
+                                if !trimmed.is_empty() {
+                                    cell_text = format!("```markdown\n{}\n```", trimmed);
+                                }
+                            }
+                        }
+                    }
+
+                    if !cell_text.is_empty() {
+                        parts.push(DocumentPagePart {
+                            text: cell_text.clone(),
+                            page_number: parts.len() + 1,
+                        });
+
+                        if !extracted_code.is_empty() {
+                            extracted_code.push_str("\n\n");
+                        }
+                        extracted_code.push_str(&cell_text);
+                    }
+                }
+            }
+        }
+
+        let full_text = if !extracted_code.is_empty() {
+            extracted_code.trim().to_string()
+        } else {
+            raw_json
+        };
+
+        let page_count = if parts.is_empty() { 1 } else { parts.len() };
+        if parts.is_empty() {
+            parts.push(DocumentPagePart {
+                text: full_text.clone(),
+                page_number: 1,
+            });
+        }
+
+        Ok(ParseDocumentResponse {
+            text: full_text,
+            page_count,
+            parts,
+        })
     }
 
     pub async fn parse_video(&self, raw_url: &str) -> Result<ParseVideoResponse, AppError> {
@@ -61,6 +153,73 @@ impl ParsingService {
 
         let audio_bytes = fs::read(&expected_mp3).map_err(|e| format!("Failed to read audio file: {}", e))?;
 
+        self.transcribe_audio_bytes(audio_bytes).await
+    }
+
+    #[tracing::instrument(skip(self, file_bytes))]
+    pub async fn process_video_file(&self, ext: &str, file_bytes: Vec<u8>) -> Result<ParseVideoResponse, AppError> {
+        let temp_dir = Builder::new().prefix("vid_file_").tempdir().map_err(|e| e.to_string())?;
+        let input_path = temp_dir.path().join(format!("input.{}", ext));
+        let expected_mp3 = temp_dir.path().join("audio.mp3");
+
+        fs::write(&input_path, &file_bytes).map_err(|e| format!("Failed to write video file: {}", e))?;
+
+        let output = Command::new("ffmpeg")
+            .args([
+                "-y",
+                "-i", input_path.to_str().ok_or("Path contains invalid UTF-8")?,
+                "-vn",
+                "-ac", "1",
+                "-ar", "16000",
+                "-ab", "32k",
+                "-f", "mp3",
+                expected_mp3.to_str().ok_or("Path contains invalid UTF-8")?
+            ])
+            .output().await.map_err(|e| format!("Failed to spawn ffmpeg: {}", e))?;
+
+        if !output.status.success() {
+            let err_msg = String::from_utf8_lossy(&output.stderr);
+            error!("ffmpeg error: {}", err_msg);
+            return Err("Failed to extract audio from video file".into());
+        }
+
+        let audio_bytes = fs::read(&expected_mp3).map_err(|e| format!("Failed to read extracted audio: {}", e))?;
+
+        self.transcribe_audio_bytes(audio_bytes).await
+    }
+
+    #[tracing::instrument(skip(self, file_bytes))]
+    pub async fn process_audio_file(&self, ext: &str, file_bytes: Vec<u8>) -> Result<ParseVideoResponse, AppError> {
+        let temp_dir = Builder::new().prefix("aud_file_").tempdir().map_err(|e| e.to_string())?;
+        let input_path = temp_dir.path().join(format!("input.{}", ext));
+        let expected_mp3 = temp_dir.path().join("audio.mp3");
+
+        fs::write(&input_path, &file_bytes).map_err(|e| format!("Failed to write audio file: {}", e))?;
+
+        let output = Command::new("ffmpeg")
+            .args([
+                "-y",
+                "-i", input_path.to_str().ok_or("Path contains invalid UTF-8")?,
+                "-ac", "1",
+                "-ar", "16000",
+                "-ab", "32k",
+                "-f", "mp3",
+                expected_mp3.to_str().ok_or("Path contains invalid UTF-8")?
+            ])
+            .output().await.map_err(|e| format!("Failed to spawn ffmpeg: {}", e))?;
+
+        if !output.status.success() {
+            let err_msg = String::from_utf8_lossy(&output.stderr);
+            error!("ffmpeg error: {}", err_msg);
+            return Err("Failed to process audio file".into());
+        }
+
+        let audio_bytes = fs::read(&expected_mp3).map_err(|e| format!("Failed to read processed audio: {}", e))?;
+
+        self.transcribe_audio_bytes(audio_bytes).await
+    }
+
+    async fn transcribe_audio_bytes(&self, audio_bytes: Vec<u8>) -> Result<ParseVideoResponse, AppError> {
         let data = self.ai_gateway
             .transcribe_audio("audio.mp3".to_string(), audio_bytes)
             .await
@@ -81,6 +240,7 @@ impl ParsingService {
         Ok(ParseVideoResponse { text, parts })
     }
 
+
     #[tracing::instrument(skip(self, file_bytes))]
     pub async fn process_document(&self, doc_type: &str, file_bytes: Vec<u8>) -> Result<ParseDocumentResponse, AppError> {
         let _permit = self.semaphore.acquire().await.map_err(|_| AppError::Internal("Semaphore error".into()))?;
@@ -97,6 +257,8 @@ impl ParsingService {
             parts: all_parts,
         })
     }
+
+
 }
 
 impl ParsingService {
@@ -201,7 +363,7 @@ impl ParsingService {
                 text: prompt,
                 image_urls: batch_files.clone(),
                 temperature: Some(0.2),
-                max_tokens: None,
+                ..Default::default()
             };
 
             let resp = self.ai_gateway
@@ -289,10 +451,18 @@ impl ParsingService {
             let absolute_start = current_pos + start_idx + start_tag.len();
 
             let mut found_end = None;
-            for tag in end_tags {
+
+            for tag in &end_tags {
                 if let Some(end_idx) = text[absolute_start..].find(tag) {
-                    found_end = Some((end_idx, tag.len()));
-                    break;
+                    match found_end {
+                        None => {
+                            found_end = Some((end_idx, tag.len()));
+                        }
+                        Some((min_idx, _)) if end_idx < min_idx => {
+                            found_end = Some((end_idx, tag.len()));
+                        }
+                        _ => {}
+                    }
                 }
             }
 
@@ -300,9 +470,7 @@ impl ParsingService {
                 let absolute_end = absolute_start + end_idx;
                 let page_content = text[absolute_start..absolute_end].trim().to_string();
 
-                if !page_content.is_empty() {
-                    results.push(page_content);
-                }
+                results.push(page_content);
 
                 current_pos = absolute_end + tag_len;
             } else {

@@ -7,6 +7,8 @@ pub mod services;
 
 use axum::{routing::{get, post}, Router, middleware};
 use std::sync::Arc;
+use axum::extract::DefaultBodyLimit;
+use tower_http::cors::{CorsLayer, Any};
 use tokio::net::TcpListener;
 use tracing::info;
 use utoipa::OpenApi;
@@ -32,12 +34,21 @@ async fn main() {
 
     let service = Arc::new(AppState::new(env));
 
+    let cors = CorsLayer::new()
+        .allow_origin(Any)
+        .allow_methods(Any)
+        .allow_headers(Any);
+
     let auth_routes = Router::new()
         .route("/chunkText", post(handlers::chunking::chunk_text))
         .route("/chunkPartitionedText", post(handlers::chunking::chunk_partitioned))
         .route("/parseVideo", post(handlers::parsing::parse_video))
+        .route("/parseVideoFile", post(handlers::parsing::parse_video_file))
+        .route("/parseAudioFile", post(handlers::parsing::parse_audio_file))
         .route("/parseDocument", post(handlers::parsing::parse_document))
+        .route("/parse", post(handlers::parsing::parse_file))
         .route("/getSupportedDocumentTypes", get(handlers::parsing::get_supported_types))
+        .layer(DefaultBodyLimit::max(500 * 1024 * 1024))
         .route_layer(middleware::from_fn_with_state(service.clone(), common_auth_guard));
 
     let app = Router::new()
@@ -46,6 +57,7 @@ async fn main() {
         .nest("/v1", auth_routes)
         .merge(SwaggerUi::new("/docs").url("/api-docs/openapi.json", openapi::ApiDoc::openapi()))
         .with_state(service)
+        .layer(cors)
         .layer(axum::middleware::from_fn(track_metrics));
 
     let listener = TcpListener::bind("0.0.0.0:8000").await.unwrap();
