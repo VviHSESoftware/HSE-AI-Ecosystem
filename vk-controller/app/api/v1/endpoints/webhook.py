@@ -103,6 +103,18 @@ async def chat_handler(message):
 
             answer_text = result.get("content", "Ошибка генерации")
 
+            sources = result.get("sources", [])
+            if sources:
+                sources_list = []
+                for source in sources:
+                    url = source.get("url")
+
+                    if url:
+                        sources_list.append(f"• {url}")
+
+                if sources_list:
+                    answer_text += "\n\n📚 Источники:\n" + "\n".join(sources_list)
+
             await message.answer(answer_text, parse_mode="Markdown")
 
             await history_service.add_message(vk_id, "user", user_text)
