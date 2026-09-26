@@ -7,7 +7,7 @@ use std::sync::Arc;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 use tokio::sync::RwLock;
 use tracing::{error, info};
-use ai_gateway_client::{EmbeddingRequest, EmbeddingResponse, LLMResponse};
+use ai_gateway_client::{EmbeddingRequest, EmbeddingResponse, ImageData, ImageRequest, ImageResponse, LLMResponse};
 use common_infra::HasApiTokens;
 
 pub struct GatewayState {
@@ -387,6 +387,53 @@ impl GatewayService {
         }
 
         Ok(EmbeddingResponse { embeddings, model: raw["model"].as_str().unwrap_or("").to_string(), usage: raw["usage"].clone() })
+    }
+
+    pub async fn generate_image(&self, req: ImageRequest) -> Result<ImageResponse, String> {
+        let (m_settings, client, base_url) = self.get_model_and_client(&req.mode).await?;
+
+        let mut req_body = m_settings.extra_payload.clone();
+        if !req_body.is_object() {
+            req_body = json!({});
+        }
+        req_body["model"] = json!(m_settings.remote_model_id);
+        req_body["prompt"] = json!(req.prompt);
+
+        if let Some(n) = req.n {
+            req_body["n"] = json!(n);
+        }
+        if let Some(ref rf) = req.response_format {
+            req_body["response_format"] = json!(rf);
+        }
+        if let Some(ref ar) = req.aspect_ratio {
+            req_body["aspect_ratio"] = json!(ar);
+        }
+
+        let raw = self.safe_request(
+            client,
+            format!("{}/images/generations", base_url),
+            Some(req_body),
+            None,
+            &m_settings,
+            &req.mode,
+        ).await?;
+
+        let mut data = vec![];
+        if let Some(items) = raw["data"].as_array() {
+            for item in items {
+                data.push(ImageData {
+                    url: item["url"].as_str().map(|s| s.to_string()),
+                    b64_json: item["b64_json"].as_str().map(|s| s.to_string()),
+                    revised_prompt: item["revised_prompt"].as_str().map(|s| s.to_string()),
+                });
+            }
+        }
+
+        Ok(ImageResponse {
+            created: raw["created"].as_u64(),
+            model: raw["model"].as_str().unwrap_or(&m_settings.remote_model_id).to_string(),
+            data,
+        })
     }
 
     pub async fn vlm_analyze(&self, req: crate::schemas::VLMRequest) -> Result<LLMResponse, String> {

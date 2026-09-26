@@ -17,6 +17,12 @@
       "base_url": "http://provider-precise:8080/v1",
       "api_key": "any",
       "use_proxy": false
+    },
+    {
+      "id": "grok",
+      "base_url": "https://api.x.ai/v1",
+      "api_key": "any",
+      "use_proxy": true
     }
   ],
   "models": [
@@ -43,6 +49,11 @@
       "name": "m-emb",
       "provider_id": "p-fast",
       "remote_model_id": "mock-embedding-model"
+    },
+    {
+      "name": "m-image",
+      "provider_id": "grok",
+      "remote_model_id": "grok-2-image"
     }
   ],
   "routing": {
@@ -51,6 +62,7 @@
     "precise": "m-precise",
     "vlm": "m-normal",
     "embeddings": "m-emb",
-    "asr": "m-precise"
+    "asr": "m-precise",
+    "image": "m-image"
   }
 }
