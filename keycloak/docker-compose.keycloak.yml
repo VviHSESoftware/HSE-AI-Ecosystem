@@ -45,6 +45,8 @@ services:
       KC_HOSTNAME_STRICT_HTTPS: "true"
       KC_PROXY: edge
       KC_HTTP_ENABLED: "true"
+
+      TZ: Europe/Moscow
     networks:
       - keycloak-net
       - router_default
