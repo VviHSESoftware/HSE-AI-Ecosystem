@@ -43,4 +43,4 @@ async def handle_text(message: types.Message):
 
         except Exception as e:
             logger.error(f"Chat response error: {e}", exc_info=True)
-            await message.answer("😔 Произошла ошибка при обработке запроса. Попробуйте позже.")
+            await message.answer("К сожалению, мне не удалось найти ответ на этот вопрос в базе знаний. Попробуйте задать другой вопрос.")

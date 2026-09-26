@@ -16,8 +16,10 @@ class Settings(BaseSettings):
     KEYCLOAK_REALM: str = "master"
     CLIENT_ID: str
     CLIENT_SECRET: str
+    KEYCLOAK_IDP_HINT: str | None = None
 
     BASE_URL: str = "http://localhost:8000"
+    PROXY_URL: str = "http://user:pass@ip:port"
     SESSION_SECRET: str = "change_me_in_prod"
 
     ROUTER_URL: str = "http://ai-router:8000/v1"

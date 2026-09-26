@@ -17,7 +17,12 @@ logger = logging.getLogger(__name__)
 async def login(request: Request, tg_id: int):
     request.session['tg_id'] = tg_id
     redirect_uri = f"{settings.BASE_URL}/auth/callback"
-    return await oauth.keycloak.authorize_redirect(request, redirect_uri)
+
+    extra_params = {}
+    if settings.KEYCLOAK_IDP_HINT:
+        extra_params["kc_idp_hint"] = settings.KEYCLOAK_IDP_HINT
+
+    return await oauth.keycloak.authorize_redirect(request, redirect_uri, **extra_params)
 
 
 @router.get("/callback")
@@ -41,8 +46,8 @@ async def auth_callback(request: Request):
 
         text = (
             f"Привет, {user_info.get('name')}! 🎓\n"
-            "Я — AI-ассистент НИУ ВШЭ.\n\n"
-            "Меня можно спросить про дедлайны, лекции или просто поболтать со мной."
+            "Я — ИИ-ассистент НИУ ВШЭ.\n\n"
+            "Меня можно спросить про материалы лекций и курсов университета!"
         )
         kb = InlineKeyboardMarkup(inline_keyboard=[
             [InlineKeyboardButton(text="🗑 Сбросить контекст", callback_data="clear_context")],
@@ -58,7 +63,7 @@ async def auth_callback(request: Request):
 
         return HTMLResponse("""
         <div style="text-align:center; font-family:sans-serif; margin-top:50px;">
-            <h1>Успешно! 🎉</h1>
+            <h1>Авторизация прошла успешно!</h1>
             <p>Вы можете закрыть это окно и вернуться в Telegram.</p>
             <script>window.close()</script>
         </div>

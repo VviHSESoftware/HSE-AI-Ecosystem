@@ -29,11 +29,11 @@ async def cmd_start(message: types.Message):
     else:
         login_url = f"{settings.BASE_URL}/auth/login?tg_id={user_id}"
         text = (
-            "Привет! Я — AI-ассистент ВШЭ.\n"
+            "Привет! Я — ИИ-ассистент ВШЭ.\n"
             "Чтобы я мог помогать с учебой, мне нужно знать, кто ты."
         )
         kb = InlineKeyboardMarkup(inline_keyboard=[
-            [InlineKeyboardButton(text="🔑 Войти через Keycloak", url=login_url)]
+            [InlineKeyboardButton(text="🔑 Войти", url=login_url)]
         ])
 
     await message.answer(text, reply_markup=kb)
