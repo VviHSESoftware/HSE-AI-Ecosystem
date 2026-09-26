@@ -4,11 +4,13 @@ use reqwest::Client;
 use serde_json::json;
 use sha2::{Digest, Sha256};
 use tracing::info;
+use graphile_worker::WorkerUtils;
 
 use crate::config::AppEnv;
 use kb_common::repository::KbRepository;
 use kb_common::repository::models::{NewVideoChunk, NewFilePage};
 use crate::schemas::*;
+use crate::worker::{ModuleJobPayload, ProcessModuleTask};
 use common_infra::AppError;
 use ai_gateway_client::AiGateway;
 use doc_processor_client::{DocProcessor, ChunkTextRequest};
@@ -19,6 +21,7 @@ pub struct ModuleService {
     pub client: Client,
     pub ai_gateway: Arc<dyn AiGateway>,
     pub doc_processor: Arc<dyn DocProcessor>,
+    pub worker_utils: WorkerUtils,
 }
 
 impl ModuleService {
@@ -27,9 +30,10 @@ impl ModuleService {
         repo: KbRepository,
         client: Client,
         ai_gateway: Arc<dyn AiGateway>,
-        doc_processor: Arc<dyn DocProcessor>
+        doc_processor: Arc<dyn DocProcessor>,
+        worker_utils: WorkerUtils,
     ) -> Self {
-        Self { env, repo, client, ai_gateway, doc_processor }
+        Self { env, repo, client, ai_gateway, doc_processor, worker_utils }
     }
 
     fn calculate_hash(data: &[u8]) -> String {
@@ -94,7 +98,7 @@ impl ModuleService {
     }
 
     pub async fn get_supported_file_types(&self) -> Result<SupportedFileTypesRes, AppError> {
-        let res = self.client.get(format!("{}/api/v1/getSupportedDocumentTypes", self.env.doc_processor_url))
+        let res = self.client.get(format!("{}/v1/getSupportedDocumentTypes", self.env.doc_processor_url))
             .header("Authorization", format!("Bearer {}", self.env.doc_processor_token))
             .send().await.map_err(|e| AppError::Internal(e.to_string()))?;
 
@@ -133,9 +137,70 @@ impl ModuleService {
         Ok(())
     }
 
-    pub async fn set_text_type(&self, system_id: i32, module_id: i32, text: String) -> Result<(), AppError> {
+    pub async fn queue_text_type(&self, system_id: i32, module_id: i32, text: String) -> Result<(), AppError> {
         self.check_access(system_id, module_id).await?;
+        self.worker_utils
+            .add_job(ProcessModuleTask { payload: ModuleJobPayload::Text { module_id, text } }, Default::default())
+            .await
+            .map_err(|e| AppError::Internal(e.to_string()))?;
+        Ok(())
+    }
 
+    pub async fn queue_video_type(&self, system_id: i32, module_id: i32, video_url: String) -> Result<(), AppError> {
+        self.check_access(system_id, module_id).await?;
+        self.worker_utils
+            .add_job(ProcessModuleTask { payload: ModuleJobPayload::VideoUrl { module_id, video_url } }, Default::default())
+            .await
+            .map_err(|e| AppError::Internal(e.to_string()))?;
+        Ok(())
+    }
+
+    pub async fn queue_video_file_type(&self, system_id: i32, module_id: i32, filename: String, file_bytes: Vec<u8>) -> Result<(), AppError> {
+        self.check_access(system_id, module_id).await?;
+        let temp_dir = std::env::temp_dir().join("kb_uploads");
+        tokio::fs::create_dir_all(&temp_dir).await.map_err(|e| AppError::Internal(e.to_string()))?;
+
+        let temp_path = temp_dir.join(format!("vid_{}_{}", uuid::Uuid::new_v4(), filename));
+        tokio::fs::write(&temp_path, &file_bytes).await.map_err(|e| AppError::Internal(e.to_string()))?;
+
+        self.worker_utils
+            .add_job(ProcessModuleTask {
+                payload: ModuleJobPayload::VideoFile {
+                    module_id,
+                    filename,
+                    temp_path: temp_path.to_string_lossy().to_string(),
+                }
+            }, Default::default())
+            .await
+            .map_err(|e| AppError::Internal(e.to_string()))?;
+
+        Ok(())
+    }
+
+    pub async fn queue_document_type(&self, system_id: i32, module_id: i32, filename: String, file_bytes: Vec<u8>) -> Result<(), AppError> {
+        self.check_access(system_id, module_id).await?;
+        let temp_dir = std::env::temp_dir().join("kb_uploads");
+        tokio::fs::create_dir_all(&temp_dir).await.map_err(|e| AppError::Internal(e.to_string()))?;
+
+        let temp_path = temp_dir.join(format!("doc_{}_{}", uuid::Uuid::new_v4(), filename));
+        tokio::fs::write(&temp_path, &file_bytes).await.map_err(|e| AppError::Internal(e.to_string()))?;
+
+        self.worker_utils
+            .add_job(ProcessModuleTask {
+                payload: ModuleJobPayload::DocumentFile {
+                    module_id,
+                    filename,
+                    temp_path: temp_path.to_string_lossy().to_string(),
+                }
+            }, Default::default())
+            .await
+            .map_err(|e| AppError::Internal(e.to_string()))?;
+
+        Ok(())
+    }
+
+
+    pub async fn process_text_type(&self, module_id: i32, text: String) -> Result<(), AppError> {
         let hash = Self::calculate_hash(text.as_bytes());
         let res = if let Some(cached_res) = self.load_from_cache::<HashResText>(&hash).await? {
             info!("Cache hit for text snippet");
@@ -177,16 +242,40 @@ impl ModuleService {
         Ok(())
     }
 
-    pub async fn set_video_type(&self, system_id: i32, module_id: i32, video_url: String) -> Result<(), AppError> {
-        self.check_access(system_id, module_id).await?;
-
+    pub async fn process_video_type(&self, module_id: i32, video_url: String) -> Result<(), AppError> {
         let hash = Self::calculate_hash(video_url.as_bytes());
+        self.process_video_pipeline(
+            module_id,
+            hash,
+            &video_url,
+            self.doc_processor.parse_video(&video_url)
+        ).await
+    }
+
+    pub async fn process_video_file_type(&self, module_id: i32, filename: String, file_bytes: Vec<u8>) -> Result<(), AppError> {
+        let hash = Self::calculate_hash(&file_bytes);
+        self.process_video_pipeline(
+            module_id,
+            hash,
+            &filename,
+            self.doc_processor.parse_video_file(&filename, file_bytes)
+        ).await
+    }
+
+    async fn process_video_pipeline(
+        &self,
+        module_id: i32,
+        hash: String,
+        source_name: &str,
+        parser_future: impl Future<Output = Result<doc_processor_client::ParseVideoResponse, AppError>>,
+    ) -> Result<(), AppError> {
         let res = if let Some(cached_res) = self.load_from_cache::<HashResVideo>(&hash).await? {
-            info!("Cache hit for video: {}", video_url);
+            info!("Cache hit for video: {}", source_name);
             cached_res
         } else {
-            info!("Cache miss for video: {}. Starting processing...", video_url);
-            let parse_data = self.doc_processor.parse_video(&video_url).await.map_err(|e| AppError::Internal(e.to_string()))?;
+            info!("Cache miss for video: {}. Starting processing...", source_name);
+            let parse_data = parser_future.await?;
+
             let mut modified_parts = parse_data.parts.clone();
             for p in &mut modified_parts {
                 p.text = format!("[TIMECODE: {:.0}] {}", p.start, p.text);
@@ -229,21 +318,27 @@ impl ModuleService {
         let mut qdrant_points = vec![];
         for chunk in res.chunks {
             qdrant_points.push(json!({
-                "id": uuid::Uuid::new_v4().to_string(), "vector": chunk.embedding,
+                "id": uuid::Uuid::new_v4().to_string(),
+                "vector": chunk.embedding,
                 "payload": {
-                    "module_id": module_id, "parent_ids": parent_ids, "description": description,
-                    "type": "video", "text": chunk.text, "start": chunk.start, "end": chunk.end
+                    "module_id": module_id,
+                    "parent_ids": parent_ids,
+                    "description": description,
+                    "type": "video",
+                    "text": chunk.text,
+                    "start": chunk.start,
+                    "end": chunk.end
                 }
             }));
         }
 
-        if !qdrant_points.is_empty() { self.upsert_to_qdrant(json!(qdrant_points)).await?; }
+        if !qdrant_points.is_empty() {
+            self.upsert_to_qdrant(json!(qdrant_points)).await?;
+        }
         Ok(())
     }
 
-    pub async fn set_document_type(&self, system_id: i32, module_id: i32, filename: String, file: Vec<u8>) -> Result<(), AppError> {
-        self.check_access(system_id, module_id).await?;
-
+    pub async fn process_document_type(&self, module_id: i32, filename: String, file: Vec<u8>) -> Result<(), AppError> {
         let hash = Self::calculate_hash(&file);
         let res = if let Some(cached_res) = self.load_from_cache::<HashResDocument>(&hash).await? {
             info!("Cache hit for file: {}", filename);
@@ -307,7 +402,7 @@ impl ModuleService {
     async fn get_embeddings(&self, inputs: Vec<String>) -> Result<Vec<Vec<f32>>, AppError> {
         let mut all_embeddings = Vec::new();
         for input in inputs {
-            let res = self.ai_gateway.create_embeddings(input).await.map_err(|e| AppError::Internal(e.to_string()))?;
+            let res = self.ai_gateway.create_embeddings(input, "passage".to_string()).await.map_err(|e| AppError::Internal(e.to_string()))?;
             if let Some(emb) = res.embeddings.first() {
                 all_embeddings.push(emb.clone());
             }

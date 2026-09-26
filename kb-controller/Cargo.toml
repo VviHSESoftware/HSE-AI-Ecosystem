@@ -8,6 +8,7 @@ edition = "2024"
 axum = { workspace = true }
 reqwest = { workspace = true }
 tokio = { workspace = true }
+graphile_worker = { workspace = true }
 
 # Serialization
 bincode = { workspace = true }

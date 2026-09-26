@@ -20,14 +20,46 @@ pub async fn add_module_access(State(state): State<Arc<KbControllerState>>, Exte
 
 #[utoipa::path(post, path = "/v1/setVideoType", request_body = SetVideoTypeReq, responses((status = 200, description = "Success")), security(("bearerAuth" = [])))]
 pub async fn set_video_type(State(state): State<Arc<KbControllerState>>, Extension(ctx): Extension<SystemContext>, Json(req): Json<SetVideoTypeReq>) -> Result<Json<Value>, AppError> {
-    state.module_service.set_video_type(ctx.system_id, req.module_id, req.video_url).await?;
-    Ok(Json(json!({"status": "success", "message": "Video module processed and saved"})))
+    state.module_service.queue_video_type(ctx.system_id, req.module_id, req.video_url).await?;
+    Ok(Json(json!({"status": "queued", "message": "Video module queued for processing"})))
+}
+
+#[utoipa::path(post, path = "/v1/setVideoFileType", request_body(content = SetDocumentTypeUpload, content_type = "multipart/form-data"), responses((status = 200, description = "Success")), security(("bearerAuth" = [])))]
+pub async fn set_video_file_type(
+    State(state): State<Arc<KbControllerState>>,
+    Extension(ctx): Extension<SystemContext>,
+    mut multipart: Multipart
+) -> Result<Json<Value>, AppError> {
+    let mut file_bytes = Vec::new();
+    let mut filename = String::new();
+    let mut module_id = 0;
+
+    while let Some(field) = multipart.next_field().await.map_err(|e| AppError::BadRequest(e.to_string()))? {
+        match field.name() {
+            Some("file") => {
+                filename = field.file_name().unwrap_or("video.mp4").to_string();
+                file_bytes = field.bytes().await.map_err(|e| AppError::BadRequest(e.to_string()))?.to_vec();
+            },
+            Some("module_id") => {
+                let txt = field.text().await.map_err(|e| AppError::BadRequest(e.to_string()))?;
+                module_id = txt.parse().unwrap_or(0);
+            },
+            _ => {}
+        }
+    }
+
+    if module_id == 0 || file_bytes.is_empty() {
+        return Err(AppError::BadRequest("Missing fields: 'file' and 'module_id' are required".into()));
+    }
+
+    state.module_service.queue_video_file_type(ctx.system_id, module_id, filename, file_bytes).await?;
+    Ok(Json(json!({"status": "queued", "message": "Video file queued for processing"})))
 }
 
 #[utoipa::path(post, path = "/v1/setTextType", request_body = SetTextTypeReq, responses((status = 200, description = "Success")), security(("bearerAuth" = [])))]
 pub async fn set_text_type(State(state): State<Arc<KbControllerState>>, Extension(ctx): Extension<SystemContext>, Json(req): Json<SetTextTypeReq>) -> Result<Json<Value>, AppError> {
-    state.module_service.set_text_type(ctx.system_id, req.module_id, req.text).await?;
-    Ok(Json(json!({"status": "success", "message": "Text module processed and saved"})))
+    state.module_service.queue_text_type(ctx.system_id, req.module_id, req.text).await?;
+    Ok(Json(json!({"status": "queued", "message": "Text module queued for processing"})))
 }
 
 #[utoipa::path(post, path = "/v1/setDocumentType", request_body(content = SetDocumentTypeUpload, content_type = "multipart/form-data"), responses((status = 200, description = "Success")), security(("bearerAuth" = [])))]
@@ -52,8 +84,8 @@ pub async fn set_document_type(State(state): State<Arc<KbControllerState>>, Exte
 
     if module_id == 0 || file_bytes.is_empty() { return Err(AppError::BadRequest("Missing fields".into())); }
 
-    state.module_service.set_document_type(ctx.system_id, module_id, filename, file_bytes).await?;
-    Ok(Json(json!({"status": "success", "message": "Document module processed and saved"})))
+    state.module_service.queue_document_type(ctx.system_id, module_id, filename, file_bytes).await?;
+    Ok(Json(json!({"status": "queued", "message": "Document module queued for processing"})))
 }
 
 #[utoipa::path(post, path = "/v1/getModuleId", request_body = GetModuleIdReq, responses((status = 200, body = ModuleIdRes)), security(("bearerAuth" = [])))]
