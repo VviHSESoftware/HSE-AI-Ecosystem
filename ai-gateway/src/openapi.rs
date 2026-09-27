@@ -12,10 +12,10 @@ use common_infra::{system_handlers, openapi::SecurityAddon};
         system_handlers::health, system_handlers::metrics,
         generation::llm, generation::vlm, generation::embeddings,
         openai::openai_chat, openai::list_models,
-        audio::asr, image::image,
+        audio::asr, image::image, image::image_edit,
         admin::reload, admin::status
     ),
-    components(schemas(LLMRequest, ChatMessage, LLMResponse, VLMRequest, EmbeddingRequest, EmbeddingResponse, AudioUpload, ImageRequest, ImageData, ImageResponse)),
+    components(schemas(LLMRequest, ChatMessage, LLMResponse, VLMRequest, EmbeddingRequest, EmbeddingResponse, AudioUpload, ImageRequest, ImageData, ImageResponse, ImageEditUpload)),
     modifiers(&SecurityAddon)
 )]
 pub struct ApiDoc;

@@ -52,6 +52,7 @@ async fn main() {
         .route("/embeddings", post(handlers::generation::embeddings))
         .route("/asr", post(handlers::audio::asr))
         .route("/image", post(handlers::image::image))
+        .route("/images/edits", post(handlers::image::image_edit))
         .layer(DefaultBodyLimit::max(100 * 1024 * 1024))
         .route("/admin/config/reload", post(handlers::admin::reload))
         .route("/admin/status/models", get(handlers::admin::status))

@@ -10,6 +10,21 @@ use tracing::{error, info};
 use ai_gateway_client::{EmbeddingRequest, EmbeddingResponse, ImageData, ImageRequest, ImageResponse, LLMResponse};
 use common_infra::HasApiTokens;
 
+pub struct ImageEditFile {
+    pub field_name: String,
+    pub file_name: String,
+    pub bytes: Vec<u8>,
+}
+
+#[derive(Default)]
+pub struct ImageEditForm {
+    pub prompt: Option<String>,
+    pub n: Option<u8>,
+    pub response_format: Option<String>,
+    pub size: Option<String>,
+    pub files: Vec<ImageEditFile>,
+}
+
 pub struct GatewayState {
     pub config: DynamicConfig,
     pub clients: HashMap<String, Client>,
@@ -434,6 +449,44 @@ impl GatewayService {
             model: raw["model"].as_str().unwrap_or(&m_settings.remote_model_id).to_string(),
             data,
         })
+    }
+
+    pub async fn edit_image(&self, form: ImageEditForm) -> Result<serde_json::Value, String> {
+        let (m_settings, client, base_url) = self.get_model_and_client("image").await?;
+
+        let mut mp = reqwest::multipart::Form::new()
+            .text("model", m_settings.remote_model_id.clone());
+
+        if let Some(prompt) = form.prompt {
+            mp = mp.text("prompt", prompt);
+        }
+        if let Some(n) = form.n {
+            mp = mp.text("n", n.to_string());
+        }
+        if let Some(response_format) = form.response_format {
+            mp = mp.text("response_format", response_format);
+        }
+        if let Some(size) = form.size {
+            mp = mp.text("size", size);
+        }
+
+        for file in form.files {
+            let ImageEditFile { field_name, file_name, bytes } = file;
+            let mut part = reqwest::multipart::Part::bytes(bytes);
+            if !file_name.is_empty() {
+                part = part.file_name(file_name);
+            }
+            mp = mp.part(field_name, part);
+        }
+
+        self.safe_request(
+            client,
+            format!("{}/images/edits", base_url),
+            None,
+            Some(mp),
+            &m_settings,
+            "image",
+        ).await
     }
 
     pub async fn vlm_analyze(&self, req: crate::schemas::VLMRequest) -> Result<LLMResponse, String> {

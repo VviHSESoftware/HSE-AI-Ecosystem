@@ -109,3 +109,17 @@ pub struct ImageResponse {
     pub model: String,
     pub data: Vec<ImageData>,
 }
+
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+#[cfg_attr(feature = "openapi", derive(utoipa::ToSchema))]
+pub struct ImageEditUpload {
+    #[cfg_attr(feature = "openapi", schema(format = Binary))]
+    pub image: String,
+    #[cfg_attr(feature = "openapi", schema(format = Binary))]
+    pub mask: Option<String>,
+    pub prompt: String,
+    pub model: Option<String>,
+    pub n: Option<u8>,
+    pub response_format: Option<String>,
+    pub size: Option<String>,
+}
